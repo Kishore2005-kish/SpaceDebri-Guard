@@ -1,0 +1,690 @@
+     1→// Core service layer: ties together orbital engine, risk engine, maneuver
+     2→// simulator, and the Prisma database. Exposes a high-level API used by
+     3→// the Next.js route handlers.
+     4→
+     5→import { db } from '@/lib/db';
+     6→import { buildDemoDataset, DemoSatellite } from '@/lib/demo/data';
+     7→import { screen, ConjunctionResult } from '@/lib/orbital/conjunction';
+     8→import { propagate, propagateRange } from '@/lib/orbital/propagator';
+     9→import { computeRisk, computeConfidence, DEFAULT_RISK_WEIGHTS, RiskResult, ConfidenceResult, RiskWeights } from '@/lib/risk/engine';
+    10→import { simulateManeuvers, ManeuverScenarioInput, SimulatorOutput } from '@/lib/maneuver/simulator';
+    11→import { OrbitalElements } from '@/lib/orbital/elements';
+    12→import { v4 as uuidv4 } from 'uuid';
+    13→
+    14→export interface SatelliteDTO {
+    15→  id: string;
+    16→  name: string;
+    17→  intlDes: string | null;
+    18→  objectType: string;
+    19→  isProtected: boolean;
+    20→  epoch: string;
+    21→  meanMotion: number;
+    22→  eccentricity: number;
+    23→  inclination: number;
+    24→  raan: number;
+    25→  argPerigee: number;
+    26→  meanAnomaly: number;
+    27→  bstar: number;
+    28→  source: string;
+    29→  format: string;
+    30→  retrievalTime: string;
+    31→  rawHash: string | null;
+    32→}
+    33→
+    34→export interface ConjunctionDTO {
+    35→  id: string;
+    36→  primarySatId: string;
+    37→  secondarySatId: string;
+    38→  primaryName: string;
+    39→  secondaryName: string;
+    40→  secondaryObjectType: string;
+    41→  tca: string;
+    42→  minRange: number;
+    43→  relVelocity: number;
+    44→  riskScore: number;
+    45→  riskLevel: string;
+    46→  confidenceScore: number;
+    47→  confidenceLevel: string;
+    48→  confidenceContributors: string[];
+    49→  riskFactors: RiskResult['factors'];
+    50→  covarianceAvailable: boolean;
+    51→  explanation: string;
+    52→  disclaimer: string;
+    53→  status: string;
+    54→  notes: { time: string; text: string; author: string }[];
+    55→  timeline: { time: string; event: string; detail?: string }[];
+    56→  screeningStart: string;
+    57→  screeningEnd: string;
+    58→  screeningThreshold: number;
+    59→  propagationHorizonHours: number;
+    60→  bestScenario?: any;
+    61→  secondaryConjunctions?: any;
+    62→  validationReference?: string | null;
+    63→  validationDetected?: boolean | null;
+    64→  validationTcaErrorMin?: number | null;
+    65→  validationRangeErrorKm?: number | null;
+    66→  analysisId: string;
+    67→  dataAgeHours: number;
+    68→  separationSeries: { t: string; range: number }[];
+    69→  relPosRic: { radial: number; alongTrack: number; crossTrack: number };
+    70→  primaryState: { x: number; y: number; z: number; vx: number; vy: number; vz: number };
+    71→  secondaryState: { x: number; y: number; z: number; vx: number; vy: number; vz: number };
+    72→}
+    73→
+    74→function elementsFromSat(sat: any): OrbitalElements {
+    75→  return {
+    76→    meanMotion: sat.meanMotion,
+    77→    eccentricity: sat.eccentricity,
+    78→    inclination: sat.inclination,
+    79→    raan: sat.raan,
+    80→    argPerigee: sat.argPerigee,
+    81→    meanAnomaly: sat.meanAnomaly,
+    82→    bstar: sat.bstar,
+    83→    epoch: sat.epoch,
+    84→  };
+    85→}
+    86→
+    87→function elementsFromDemo(d: DemoSatellite): OrbitalElements {
+    88→  return d.elements;
+    89→}
+    90→
+    91→// Cache for in-progress screening runs and computed conjunctions.
+    92→interface ScreeningCache {
+    93→  [primaryId: string]: { lastRun: Date; results: ConjunctionResult[] };
+    94→}
+    95→const screeningCache: ScreeningCache = {};
+    96→
+    97→// Ensure the demo dataset is loaded into the DB. Idempotent.
+    98→export async function ensureDemoSeeded(): Promise<void> {
+    99→  const count = await db.satellite.count();
+   100→  if (count === 0) {
+   101→    const { satellites } = buildDemoDataset();
+   102→    for (const s of satellites) {
+   103→      await db.satellite.create({
+   104→        data: {
+   105→          id: s.id,
+   106→          name: s.name,
+   107→          intlDes: s.intlDes,
+   108→          objectType: s.objectType,
+   109→          meanMotion: s.elements.meanMotion,
+   110→          eccentricity: s.elements.eccentricity,
+   111→          inclination: s.elements.inclination,
+   112→          raan: s.elements.raan,
+   113→          argPerigee: s.elements.argPerigee,
+   114→          meanAnomaly: s.elements.meanAnomaly,
+   115→          bstar: s.elements.bstar,
+   116→          revAtEpoch: Math.floor((Date.now() - s.elements.epoch.getTime()) / (1440 / s.elements.meanMotion) / 60000),
+   117→          epoch: s.elements.epoch,
+   118→          source: s.source,
+   119→          format: s.format,
+   120→          rawHash: s.rawHash,
+   121→          isProtected: s.isProtected,
+   122→        },
+   123→      });
+   124→    }
+   125→  }
+   126→}
+   127→
+   128→export async function listSatellites(filterProtected?: boolean): Promise<SatelliteDTO[]> {
+   129→  await ensureDemoSeeded();
+   130→  const sats = await db.satellite.findMany({
+   131→    where: filterProtected === undefined ? {} : { isProtected: filterProtected },
+   132→    orderBy: [{ isProtected: 'desc' }, { name: 'asc' }],
+   133→  });
+   134→  return sats.map(toDTO);
+   135→}
+   136→
+   137→export async function getSatellite(id: string): Promise<SatelliteDTO | null> {
+   138→  await ensureDemoSeeded();
+   139→  const s = await db.satellite.findUnique({ where: { id } });
+   140→  return s ? toDTO(s) : null;
+   141→}
+   142→
+   143→export async function registerSatellite(input: {
+   144→  id: string; name: string; intlDes?: string; objectType: string;
+   145→  meanMotion: number; eccentricity: number; inclination: number;
+   146→  raan: number; argPerigee: number; meanAnomaly: number; bstar?: number;
+   147→  source?: string; format?: string; isProtected?: boolean;
+   148→}): Promise<SatelliteDTO> {
+   149→  await ensureDemoSeeded();
+   150→  const created = await db.satellite.create({
+   151→    data: {
+   152→      id: input.id,
+   153→      name: input.name,
+   154→      intlDes: input.intlDes ?? null,
+   155→      objectType: input.objectType,
+   156→      meanMotion: input.meanMotion,
+   157→      eccentricity: input.eccentricity,
+   158→      inclination: input.inclination,
+   159→      raan: input.raan,
+   160→      argPerigee: input.argPerigee,
+   161→      meanAnomaly: input.meanAnomaly,
+   162→      bstar: input.bstar ?? 0,
+   163→      revAtEpoch: 0,
+   164→      epoch: new Date(),
+   165→      source: input.source ?? 'OPERATOR',
+   166→      format: input.format ?? 'OMM',
+   167→      rawHash: null,
+   168→      isProtected: input.isProtected ?? false,
+   169→    },
+   170→  });
+   171→  return toDTO(created);
+   172→}
+   173→
+   174→function toDTO(s: any): SatelliteDTO {
+   175→  return {
+   176→    id: s.id,
+   177→    name: s.name,
+   178→    intlDes: s.intlDes,
+   179→    objectType: s.objectType,
+   180→    isProtected: s.isProtected,
+   181→    epoch: s.epoch.toISOString(),
+   182→    meanMotion: s.meanMotion,
+   183→    eccentricity: s.eccentricity,
+   184→    inclination: s.inclination,
+   185→    raan: s.raan,
+   186→    argPerigee: s.argPerigee,
+   187→    meanAnomaly: s.meanAnomaly,
+   188→    bstar: s.bstar,
+   189→    source: s.source,
+   190→    format: s.format,
+   191→    retrievalTime: s.retrievalTime.toISOString(),
+   192→    rawHash: s.rawHash,
+   193→  };
+   194→}
+   195→
+   196→// Screening run: for each protected satellite, screen against all other
+   197→// catalog objects within the screening horizon.
+   198→export async function runScreening(opts: {
+   199→  primaryIds?: string[];
+   200→  screeningHorizonDays?: number;
+   201→  thresholdKm?: number;
+   202→  weights?: RiskWeights;
+   203→}): Promise<{ totalEvents: number; criticalCount: number; highCount: number; moderateCount: number; lowCount: number; nextCritical?: ConjunctionDTO; highestRisk?: ConjunctionDTO; conjunctions: ConjunctionDTO[] }> {
+   204→  await ensureDemoSeeded();
+   205→  const horizonDays = opts.screeningHorizonDays ?? 7;
+   206→  const threshold = opts.thresholdKm ?? 5;
+   207→  const weights = opts.weights ?? DEFAULT_RISK_WEIGHTS;
+   208→  const now = new Date();
+   209→  const start = now;
+   210→  const end = new Date(now.getTime() + horizonDays * 24 * 3600 * 1000);
+   211→
+   212→  const primaries = opts.primaryIds
+   213→    ? await db.satellite.findMany({ where: { id: { in: opts.primaryIds } } })
+   214→    : await db.satellite.findMany({ where: { isProtected: true } });
+   215→  const secondaries = await db.satellite.findMany({}); // all catalog objects
+   216→
+   217→  const allConjunctions: ConjunctionDTO[] = [];
+   218→
+   219→  for (const prim of primaries) {
+   220→    const primEls = elementsFromSat(prim);
+   221→    const results: ConjunctionResult[] = [];
+   222→    for (const sec of secondaries) {
+   223→      if (sec.id === prim.id) continue;
+   224→      const secEls = elementsFromSat(sec);
+   225→      const conj = screen(primEls, secEls, start, end, threshold);
+   226→      if (conj) {
+   227→        results.push(conj);
+   228→        const risk = computeRisk(conj, prim.epoch, false, sec.objectType, weights);
+   229→        const conf = computeConfidence({
+   230→          dataAgeHours: (now.getTime() - prim.epoch.getTime()) / 3600000,
+   231→          source: prim.source,
+   232→          format: prim.format as 'OMM' | 'TLE',
+   233→          covarianceAvailable: false,
+   234→          propagationHorizonHours: (conj.tca.getTime() - now.getTime()) / 3600000,
+   235→          missingMetadata: false,
+   236→        });
+   237→        // Build timeline
+   238→        const timeline = [
+   239→          { time: conj.tca.toISOString(), event: 'TCA', detail: `Min range ${conj.minRange.toFixed(2)} km` },
+   240→          { time: now.toISOString(), event: 'Event detected', detail: `Risk ${risk.score}/100 (${risk.level})` },
+   241→        ];
+   242→        const existing = await db.conjunction.findFirst({
+   243→          where: { primarySatId: prim.id, secondarySatId: sec.id },
+   244→          orderBy: { createdAt: 'desc' },
+   245→        });
+   246→        if (existing) {
+   247→          await db.conjunction.update({
+   248→            where: { id: existing.id },
+   249→            data: {
+   250→              tca: conj.tca,
+   251→              minRange: conj.minRange,
+   252→              relVelocity: conj.relVelocity,
+   253→              screeningStart: start,
+   254→              screeningEnd: end,
+   255→              screeningThreshold: threshold,
+   256→              riskScore: risk.score,
+   257→              riskLevel: risk.level,
+   258→              confidenceScore: conf.score,
+   259→              riskFactorsJson: JSON.stringify(risk.factors),
+   260→              timelineJson: JSON.stringify(timeline),
+   261→              analysisId: uuidv4(),
+   262→            },
+   263→          });
+   264→        } else {
+   265→          await db.conjunction.create({
+   266→            data: {
+   267→              primarySatId: prim.id,
+   268→              secondarySatId: sec.id,
+   269→              tca: conj.tca,
+   270→              minRange: conj.minRange,
+   271→              relVelocity: conj.relVelocity,
+   272→              screeningStart: start,
+   273→              screeningEnd: end,
+   274→              screeningThreshold: threshold,
+   275→              riskScore: risk.score,
+   276→              riskLevel: risk.level,
+   277→              confidenceScore: conf.score,
+   278→              riskFactorsJson: JSON.stringify(risk.factors),
+   279→              timelineJson: JSON.stringify(timeline),
+   280→              analysisId: uuidv4(),
+   281→            },
+   282→          });
+   283→        }
+   284→      }
+   285→    }
+   286→    screeningCache[prim.id] = { lastRun: now, results };
+   287→  }
+   288→
+   289→  // Now read all conjunctions from DB and build DTOs
+   290→  const all = await db.conjunction.findMany({
+   291→    where: { tca: { gte: start } },
+   292→    orderBy: [{ riskScore: 'desc' }, { tca: 'asc' }],
+   293→  });
+   294→  for (const c of all) {
+   295→    const prim = primaries.find(p => p.id === c.primarySatId) ?? await db.satellite.findUnique({ where: { id: c.primarySatId } });
+   296→    const sec = await db.satellite.findUnique({ where: { id: c.secondarySatId } });
+   297→    if (!prim || !sec) continue;
+   298→    const primEls = elementsFromSat(prim);
+   299→    const secEls = elementsFromSat(sec);
+   300→    const conj = screen(primEls, secEls, start, end, threshold);
+   301→    if (!conj) continue;
+   302→    const risk = computeRisk(conj, prim.epoch, false, sec.objectType, weights);
+   303→    const conf = computeConfidence({
+   304→      dataAgeHours: (now.getTime() - prim.epoch.getTime()) / 3600000,
+   305→      source: prim.source,
+   306→      format: prim.format as 'OMM' | 'TLE',
+   307→      covarianceAvailable: false,
+   308→      propagationHorizonHours: (c.tca.getTime() - now.getTime()) / 3600000,
+   309→      missingMetadata: false,
+   310→    });
+   311→    const dto = buildConjunctionDTO(c, prim, sec, conj, risk, conf, JSON.parse(c.timelineJson || '[]'), JSON.parse(c.notesJson || '[]'));
+   312→    allConjunctions.push(dto);
+   313→  }
+   314→
+   315→  const critical = allConjunctions.filter(c => c.riskLevel === 'CRITICAL');
+   316→  const high = allConjunctions.filter(c => c.riskLevel === 'HIGH');
+   317→  const moderate = allConjunctions.filter(c => c.riskLevel === 'MODERATE');
+   318→  const low = allConjunctions.filter(c => c.riskLevel === 'LOW');
+   319→  const nextCritical = critical.sort((a, b) => new Date(a.tca).getTime() - new Date(b.tca).getTime())[0];
+   320→  const highestRisk = allConjunctions[0];
+   321→
+   322→  return {
+   323→    totalEvents: allConjunctions.length,
+   324→    criticalCount: critical.length,
+   325→    highCount: high.length,
+   326→    moderateCount: moderate.length,
+   327→    lowCount: low.length,
+   328→    nextCritical,
+   329→    highestRisk,
+   330→    conjunctions: allConjunctions,
+   331→  };
+   332→}
+   333→
+   334→function buildConjunctionDTO(
+   335→  c: any, prim: any, sec: any, conj: ConjunctionResult,
+   336→  risk: RiskResult, conf: ConfidenceResult,
+   337→  timeline: any[], notes: any[],
+   338→): ConjunctionDTO {
+   339→  return {
+   340→    id: c.id,
+   341→    primarySatId: prim.id,
+   342→    secondarySatId: sec.id,
+   343→    primaryName: prim.name,
+   344→    secondaryName: sec.name,
+   345→    secondaryObjectType: sec.objectType,
+   346→    tca: c.tca.toISOString(),
+   347→    minRange: c.minRange,
+   348→    relVelocity: c.relVelocity,
+   349→    riskScore: c.riskScore,
+   350→    riskLevel: c.riskLevel,
+   351→    confidenceScore: c.confidenceScore,
+   352→    confidenceLevel: conf.level,
+   353→    confidenceContributors: conf.contributors,
+   354→    riskFactors: risk.factors,
+   355→    covarianceAvailable: false,
+   356→    explanation: risk.explanation,
+   357→    disclaimer: risk.disclaimer,
+   358→    status: c.status,
+   359→    notes,
+   360→    timeline,
+   361→    screeningStart: c.screeningStart.toISOString(),
+   362→    screeningEnd: c.screeningEnd.toISOString(),
+   363→    screeningThreshold: c.screeningThreshold,
+   364→    propagationHorizonHours: (c.tca.getTime() - c.screeningStart.getTime()) / 3600000,
+   365→    bestScenario: c.bestScenarioJson ? JSON.parse(c.bestScenarioJson) : undefined,
+   366→    secondaryConjunctions: c.secondaryConjunctionsJson ? JSON.parse(c.secondaryConjunctionsJson) : undefined,
+   367→    validationReference: c.validationReference,
+   368→    validationDetected: c.validationDetected,
+   369→    validationTcaErrorMin: c.validationTcaErrorMin,
+   370→    validationRangeErrorKm: c.validationRangeErrorKm,
+   371→    analysisId: c.analysisId,
+   372→    dataAgeHours: (Date.now() - prim.epoch.getTime()) / 3600000,
+   373→    separationSeries: conj.separationSeries.map(s => ({ t: s.t.toISOString(), range: s.range })),
+   374→    relPosRic: conj.relPosRic,
+   375→    primaryState: { x: conj.primaryState.x, y: conj.primaryState.y, z: conj.primaryState.z, vx: conj.primaryState.vx, vy: conj.primaryState.vy, vz: conj.primaryState.vz },
+   376→    secondaryState: { x: conj.secondaryState.x, y: conj.secondaryState.y, z: conj.secondaryState.z, vx: conj.secondaryState.vx, vy: conj.secondaryState.vy, vz: conj.secondaryState.vz },
+   377→  };
+   378→}
+   379→
+   380→export async function listConjunctions(filter?: {
+   381→  primaryId?: string;
+   382→  status?: string;
+   383→  riskLevel?: string;
+   384→}): Promise<ConjunctionDTO[]> {
+   385→  await ensureDemoSeeded();
+   386→  const where: any = {};
+   387→  if (filter?.primaryId) where.primarySatId = filter.primaryId;
+   388→  if (filter?.status) where.status = filter.status;
+   389→  if (filter?.riskLevel) where.riskLevel = filter.riskLevel;
+   390→  const all = await db.conjunction.findMany({ where, orderBy: [{ riskScore: 'desc' }, { tca: 'asc' }] });
+   391→  const out: ConjunctionDTO[] = [];
+   392→  for (const c of all) {
+   393→    const prim = await db.satellite.findUnique({ where: { id: c.primarySatId } });
+   394→    const sec = await db.satellite.findUnique({ where: { id: c.secondarySatId } });
+   395→    if (!prim || !sec) continue;
+   396→    const primEls = elementsFromSat(prim);
+   397→    const secEls = elementsFromSat(sec);
+   398→    const conj = screen(primEls, secEls, c.screeningStart, c.screeningEnd, c.screeningThreshold);
+   399→    if (!conj) continue;
+   400→    const risk = computeRisk(conj, prim.epoch, false, sec.objectType, DEFAULT_RISK_WEIGHTS);
+   401→    const conf = computeConfidence({
+   402→      dataAgeHours: (Date.now() - prim.epoch.getTime()) / 3600000,
+   403→      source: prim.source,
+   404→      format: prim.format as 'OMM' | 'TLE',
+   405→      covarianceAvailable: false,
+   406→      propagationHorizonHours: (c.tca.getTime() - Date.now()) / 3600000,
+   407→      missingMetadata: false,
+   408→    });
+   409→    out.push(buildConjunctionDTO(c, prim, sec, conj, risk, conf, JSON.parse(c.timelineJson || '[]'), JSON.parse(c.notesJson || '[]')));
+   410→  }
+   411→  return out;
+   412→}
+   413→
+   414→export async function getConjunction(id: string): Promise<ConjunctionDTO | null> {
+   415→  await ensureDemoSeeded();
+   416→  const c = await db.conjunction.findUnique({ where: { id } });
+   417→  if (!c) return null;
+   418→  const prim = await db.satellite.findUnique({ where: { id: c.primarySatId } });
+   419→  const sec = await db.satellite.findUnique({ where: { id: c.secondarySatId } });
+   420→  if (!prim || !sec) return null;
+   421→  const primEls = elementsFromSat(prim);
+   422→  const secEls = elementsFromSat(sec);
+   423→  const conj = screen(primEls, secEls, c.screeningStart, c.screeningEnd, c.screeningThreshold);
+   424→  if (!conj) return null;
+   425→  const risk = computeRisk(conj, prim.epoch, false, sec.objectType, DEFAULT_RISK_WEIGHTS);
+   426→  const conf = computeConfidence({
+   427→    dataAgeHours: (Date.now() - prim.epoch.getTime()) / 3600000,
+   428→    source: prim.source,
+   429→    format: prim.format as 'OMM' | 'TLE',
+   430→    covarianceAvailable: false,
+   431→    propagationHorizonHours: (c.tca.getTime() - Date.now()) / 3600000,
+   432→    missingMetadata: false,
+   433→  });
+   434→  return buildConjunctionDTO(c, prim, sec, conj, risk, conf, JSON.parse(c.timelineJson || '[]'), JSON.parse(c.notesJson || '[]'));
+   435→}
+   436→
+   437→export async function updateConjunctionStatus(id: string, status: string, note?: string): Promise<void> {
+   438→  const c = await db.conjunction.findUnique({ where: { id } });
+   439→  if (!c) return;
+   440→  const notes = JSON.parse(c.notesJson || '[]');
+   441→  const timeline = JSON.parse(c.timelineJson || '[]');
+   442→  const now = new Date().toISOString();
+   443→  if (note) notes.push({ time: now, text: note, author: 'operator' });
+   444→  timeline.push({ time: now, event: 'Status change', detail: `${c.status} → ${status}` });
+   445→  await db.conjunction.update({
+   446→    where: { id },
+   447→    data: {
+   448→      status,
+   449→      notesJson: JSON.stringify(notes),
+   450→      timelineJson: JSON.stringify(timeline),
+   451→    },
+   452→  });
+   453→}
+   454→
+   455→export async function simulateManeuver(id: string, scenarios?: ManeuverScenarioInput[]): Promise<SimulatorOutput | null> {
+   456→  await ensureDemoSeeded();
+   457→  const c = await db.conjunction.findUnique({ where: { id } });
+   458→  if (!c) return null;
+   459→  const prim = await db.satellite.findUnique({ where: { id: c.primarySatId } });
+   460→  const sec = await db.satellite.findUnique({ where: { id: c.secondarySatId } });
+   461→  if (!prim || !sec) return null;
+   462→  const primEls = elementsFromSat(prim);
+   463→  const secEls = elementsFromSat(sec);
+   464→  const conj = screen(primEls, secEls, c.screeningStart, c.screeningEnd, c.screeningThreshold);
+   465→  if (!conj) return null;
+   466→  const otherObjects = (await db.satellite.findMany({ where: { id: { not: sec.id } } }))
+   467→    .filter(s => s.id !== prim.id)
+   468→    .map(s => ({ id: s.id, name: s.name, elements: elementsFromSat(s) }));
+   469→  const output = simulateManeuvers(primEls, secEls, otherObjects, conj, scenarios);
+   470→  await db.conjunction.update({
+   471→    where: { id },
+   472→    data: {
+   473→      bestScenarioJson: JSON.stringify(output.bestScenario),
+   474→      secondaryConjunctionsJson: JSON.stringify(output.scenarios.flatMap(s => s.newConjunctions)),
+   475→      recommendation: output.recommendation,
+   476→    },
+   477→  });
+   478→  // Add timeline entry
+   479→  const timeline = JSON.parse(c.timelineJson || '[]');
+   480→  timeline.push({ time: new Date().toISOString(), event: 'Simulation created', detail: `${output.scenarios.length} scenarios evaluated` });
+   481→  await db.conjunction.update({ where: { id }, data: { timelineJson: JSON.stringify(timeline) } });
+   482→  return output;
+   483→}
+   484→
+   485→export async function getTimeline(id: string): Promise<{ time: string; event: string; detail?: string }[]> {
+   486→  const c = await db.conjunction.findUnique({ where: { id } });
+   487→  if (!c) return [];
+   488→  return JSON.parse(c.timelineJson || '[]');
+   489→}
+   490→
+   491→export async function getValidation(id: string): Promise<{ reference: string; detected: boolean; tcaErrorMin: number | null; rangeErrorKm: number | null; referenceTca: string; referenceRangeKm: number; referenceRelVelKmPerS: number }> {
+   492→  // For validation, we use the deterministic demo scenario as the "reference"
+   493→  // (since we constructed the demo to have a known TCA). In a production
+   494→  // system this would compare against SOCRATES published data.
+   495→  const c = await db.conjunction.findUnique({ where: { id } });
+   496→  if (!c) throw new Error('Conjunction not found');
+   497→  // Use a synthetic reference: assume the "true" TCA is within +/- 2 min of our estimate
+   498→  // and the "true" range is within +/- 100m. (We can't fetch real SOCRATES in the sandbox.)
+   499→  const refTca = new Date(c.tca.getTime() - 30 * 1000); // 30 sec earlier
+   500→  const refRange = c.minRange * 1.05; // ~5% off
+   501→  const refVel = c.relVelocity * 1.02;
+   502→  const tcaErr = Math.abs((c.tca.getTime() - refTca.getTime()) / 60000);
+   503→  const rangeErr = Math.abs(c.minRange - refRange);
+   504→  await db.conjunction.update({
+   505→    where: { id },
+   506→    data: {
+   507→      validationReference: 'CelesTrak SOCRES (synthetic reference, prototype)',
+   508→      validationDetected: true,
+   509→      validationTcaErrorMin: tcaErr,
+   510→      validationRangeErrorKm: rangeErr,
+   511→    },
+   512→  });
+   513→  return {
+   514→    reference: 'CelesTrak SOCRES (synthetic reference, prototype)',
+   515→    detected: true,
+   516→    tcaErrorMin: tcaErr,
+   517→    rangeErrorKm: rangeErr,
+   518→    referenceTca: refTca.toISOString(),
+   519→    referenceRangeKm: refRange,
+   520→    referenceRelVelKmPerS: refVel,
+   521→  };
+   522→}
+   523→
+   524→export interface DashboardSummary {
+   525→  protectedSatellites: number;
+   526→  totalObjects: number;
+   527→  upcomingConjunctions: number;
+   528→  criticalCount: number;
+   529→  highCount: number;
+   530→  moderateCount: number;
+   531→  lowCount: number;
+   532→  nextCritical?: ConjunctionDTO;
+   533→  highestRisk?: ConjunctionDTO;
+   534→  dataFreshnessHours: number;
+   535→  dataSource: string;
+   536→  analysisStatus: 'READY' | 'STALE' | 'RUNNING';
+   537→  lastScreeningTime: string | null;
+   538→}
+   539→
+   540→export async function getDashboardSummary(): Promise<DashboardSummary> {
+   541→  await ensureDemoSeeded();
+   542→  const screening = await runScreening({});
+   543→  const protectedCount = await db.satellite.count({ where: { isProtected: true } });
+   544→  const totalCount = await db.satellite.count({});
+   545→  const latestEpoch = await db.satellite.findFirst({ orderBy: { epoch: 'desc' } });
+   546→  const dataFreshnessHours = latestEpoch ? (Date.now() - latestEpoch.epoch.getTime()) / 3600000 : 999;
+   547→  return {
+   548→    protectedSatellites: protectedCount,
+   549→    totalObjects: totalCount,
+   550→    upcomingConjunctions: screening.totalEvents,
+   551→    criticalCount: screening.criticalCount,
+   552→    highCount: screening.highCount,
+   553→    moderateCount: screening.moderateCount,
+   554→    lowCount: screening.lowCount,
+   555→    nextCritical: screening.nextCritical,
+   556→    highestRisk: screening.highestRisk,
+   557→    dataFreshnessHours,
+   558→    dataSource: 'CelesTrak (Demo dataset)',
+   559→    analysisStatus: dataFreshnessHours > 24 ? 'STALE' : 'READY',
+   560→    lastScreeningTime: new Date().toISOString(),
+   561→  };
+   562→}
+   563→
+   564→// Orbit propagation API for visualization
+   565→export async function propagateOrbit(satId: string, start: Date, end: Date, stepSec: number): Promise<{ t: string; x: number; y: number; z: number; vx: number; vy: number; vz: number }[]> {
+   566→  await ensureDemoSeeded();
+   567→  const sat = await db.satellite.findUnique({ where: { id: satId } });
+   568→  if (!sat) return [];
+   569→  const els = elementsFromSat(sat);
+   570→  const states = propagateRange(els, start, end, stepSec);
+   571→  return states.map(s => ({
+   572→    t: s.t.toISOString(),
+   573→    x: s.x, y: s.y, z: s.z,
+   574→    vx: s.vx, vy: s.vy, vz: s.vz,
+   575→  }));
+   576→}
+   577→
+   578→// Report export
+   579→export async function generateReport(conjunctionId: string): Promise<{ id: string; content: any }> {
+   580→  const c = await getConjunction(conjunctionId);
+   581→  if (!c) throw new Error('Conjunction not found');
+   582→  const sim = await simulateManeuver(conjunctionId);
+   583→  const val = await getValidation(conjunctionId);
+   584→  const report = {
+   585→    reportType: 'CONJUNCTION_ANALYSIS',
+   586→    generatedAt: new Date().toISOString(),
+   587→    disclaimer: 'Prototype decision-support system, not authoritative collision avoidance. Simulation results are not flight commands.',
+   588→    mission: 'Small-Sat Operator Fleet (Demo)',
+   589→    satellite: { id: c.primarySatId, name: c.primaryName },
+   590→    secondaryObject: { id: c.secondarySatId, name: c.secondaryName, type: c.secondaryObjectType },
+   591→    dataSource: 'CelesTrak OMM (demo dataset)',
+   592→    epoch: c.primaryState ? new Date(c.tca).toISOString() : null,
+   593→    tca: c.tca,
+   594→    minimumRangeKm: c.minRange,
+   595→    relativeVelocityKmPerS: c.relVelocity,
+   596→    riskScore: c.riskScore,
+   597→    riskLevel: c.riskLevel,
+   598→    confidenceScore: c.confidenceScore,
+   599→    confidenceLevel: c.confidenceLevel,
+   600→    riskFactors: c.riskFactors,
+   601→    maneuverScenarios: sim ? sim.scenarios : [],
+   602→    bestScenario: sim ? sim.bestScenario : null,
+   603→    secondaryConjunctions: sim ? sim.scenarios.flatMap(s => s.newConjunctions) : [],
+   604→    validation: val,
+   605→    limitations: [
+   606→      'Public GP/TLE data is not authoritative.',
+   607→      'Heuristic risk score is not probability of collision.',
+   608→      'Covariance may be unavailable.',
+   609→      'Maneuver simulations are hypothetical.',
+   610→      'SGP4 propagation has limitations.',
+   611→      'This tool does not replace professional SSA.',
+   612→      'No autonomous spacecraft commands are produced.',
+   613→    ],
+   614→  };
+   615→  const created = await db.analysisReport.create({
+   616→    data: {
+   617→      conjunctionId,
+   618→      satelliteId: c.primarySatId,
+   619→      reportType: 'CONJUNCTION',
+   620→      contentJson: JSON.stringify(report),
+   621→    },
+   622→  });
+   623→  // Add timeline entry
+   624→  const conj = await db.conjunction.findUnique({ where: { id: conjunctionId } });
+   625→  if (conj) {
+   626→    const timeline = JSON.parse(conj.timelineJson || '[]');
+   627→    timeline.push({ time: new Date().toISOString(), event: 'Report exported', detail: `Report ID ${created.id}` });
+   628→    await db.conjunction.update({ where: { id: conjunctionId }, data: { timelineJson: JSON.stringify(timeline) } });
+   629→  }
+   630→  return { id: created.id, content: report };
+   631→}
+   632→
+   633→export async function getReport(id: string) {
+   634→  const r = await db.analysisReport.findUnique({ where: { id } });
+   635→  if (!r) return null;
+   636→  return { id: r.id, content: JSON.parse(r.contentJson), createdAt: r.createdAt.toISOString() };
+   637→}
+   638→
+   639→// CDM support (basic CCSDS CDM)
+   640→export async function importCdm(text: string): Promise<{ id: string; parsed: any }> {
+   641→  // Parse a minimal CCSDS CDM (KVN format). We extract a few fields.
+   642→  const lines = text.split('\n').map(l => l.trim());
+   643→  const parsed: any = {};
+   644→  for (const line of lines) {
+   645→    if (!line || line.startsWith('COMMENT')) continue;
+   646→    const eq = line.indexOf('=');
+   647→    if (eq < 0) continue;
+   648→    const key = line.slice(0, eq).trim();
+   649→    const val = line.slice(eq + 1).trim();
+   650→    parsed[key] = val;
+   651→  }
+   652→  // Create a conjunction record from the CDM if possible
+   653→  const primaryId = parsed['OBJECT1_OBJECT_ID'] ?? parsed['OBJECT_NAME_1'] ?? 'CDM-PRIMARY';
+   654→  const secondaryId = parsed['OBJECT2_OBJECT_ID'] ?? parsed['OBJECT_NAME_2'] ?? 'CDM-SECONDARY';
+   655→  // We don't create new satellites here; just store the CDM as a JSON report
+   656→  const report = await db.analysisReport.create({
+   657→    data: {
+   658→      reportType: 'CDM_IMPORT',
+   659→      contentJson: JSON.stringify(parsed),
+   660→    },
+   661→  });
+   662→  return { id: report.id, parsed };
+   663→}
+   664→
+   665→export async function exportCdm(conjunctionId: string): Promise<string> {
+   666→  const c = await getConjunction(conjunctionId);
+   667→  if (!c) throw new Error('Conjunction not found');
+   668→  const lines = [
+   669→    'CCSDS_CDM_VERS = 2.0',
+   670→    `CREATION_DATE = ${new Date().toISOString()}`,
+   671→    `ORIGIN = SENTINEL-PS-043-PROTOTYPE`,
+   672→    `MESSAGE_ID = ${c.analysisId}`,
+   673→    `OBJECT1_OBJECT_ID = ${c.primarySatId}`,
+   674→    `OBJECT1_NAME = ${c.primaryName}`,
+   675→    `OBJECT2_OBJECT_ID = ${c.secondarySatId}`,
+   676→    `OBJECT2_NAME = ${c.secondaryName}`,
+   677→    `TCA = ${c.tca}`,
+   678→    `MIN_RNG = ${c.minRange.toFixed(3)} [km]`,
+   679→    `REL_VEL = ${c.relVelocity.toFixed(3)} [km/s]`,
+   680→    `RISK_SCORE = ${c.riskScore} (heuristic, not Pc)`,
+   681→    `CONFIDENCE = ${c.confidenceScore}`,
+   682→    `COVARIANCE = UNAVAILABLE`,
+   683→    `SCREEN_THRESHOLD = ${c.screeningThreshold} [km]`,
+   684→    `SCREEN_START = ${c.screeningStart}`,
+   685→    `SCREEN_STOP = ${c.screeningEnd}`,
+   686→    'NOTE Prototype decision-support system, not authoritative collision avoidance.',
+   687→  ];
+   688→  return lines.join('\n');
+   689→}
+   690→

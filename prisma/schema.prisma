@@ -1,0 +1,238 @@
+// Prisma schema for SENTINEL — Conjunction Awareness for Small-Sat Operators (PS-04.3)
+//
+// SQLite is used (per the fullstack-dev skill stack) instead of PostgreSQL.
+// The schema is designed to be PostgreSQL-compatible — to migrate, just
+// change the `provider` to "postgresql" and the `url` env var.
+//
+// This is a prototype decision-support system, not authoritative collision
+// avoidance. Catalog IDs are stored as strings to support 6+ digit NORAD IDs
+// (per https://celestrak.org/NORAD/documentation/gp-data-formats.php).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A catalog object: payload / debris / rocket body / unknown.
+// Catalog IDs are stored as String to support 6+ digit NORAD IDs without
+// truncation (the legacy TLE format only supports 5 digits).
+model Satellite {
+  id              String   @id // catalog ID string (e.g. "25544", "600000")
+  name            String
+  objectType      String   // PAYLOAD | DEBRIS | ROCKET_BODY | UNKNOWN | SPECIAL
+  intlDes         String?  // international designator (e.g. "1998-067A")
+  operationalStatus String? // from CelesTrak SATCAT
+
+  // OMM orbital elements (JSON shape from CelesTrak, normalized)
+  meanMotion      Float    // rev/day
+  eccentricity    Float
+  inclination     Float    // deg
+  raan            Float    // deg (RA of ascending node)
+  argPerigee      Float    // deg (argument of perigee)
+  meanAnomaly     Float    // deg
+  bstar           Float    // drag term
+  revAtEpoch      Int      // revolution number at epoch
+
+  // Derived (for display)
+  semiMajorAxisKm Float?
+  perigeeKm       Float?
+  apogeeKm        Float?
+  orbitalPeriodMin Float?
+
+  epoch           DateTime // orbital epoch
+  // Provenance
+  source          String   // 'CelesTrak' (LIVE) | 'SENTINEL-DEMO' (DEMO) | 'SENTINEL-SIMULATED'
+  format          String   // OMM | TLE | JSON | CSV
+  retrievalTime   DateTime @default(now())
+  rawHash         String?  // hash of raw source data
+  rawData         String?  // raw JSON string from CelesTrak (for audit)
+
+  // For the operator's "protected" fleet
+  isProtected     Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  conjunctionsAsPrimary   Conjunction[] @relation("ConjunctionPrimary")
+  conjunctionsAsSecondary Conjunction[] @relation("ConjunctionSecondary")
+
+  @@index([isProtected])
+  @@index([objectType])
+  @@index([source])
+  @@index([epoch])
+}
+
+// A close approach between primary (usually protected) and secondary object.
+model Conjunction {
+  id              String   @id @default(cuid())
+  primarySatId    String
+  secondarySatId  String
+  primary         Satellite @relation("ConjunctionPrimary", fields: [primarySatId], references: [id])
+  secondary       Satellite @relation("ConjunctionSecondary", fields: [secondarySatId], references: [id])
+
+  tca             DateTime // time of closest approach
+  minRange        Float    // km, miss distance
+  relVelocity     Float    // km/s
+  // Saved propagation context
+  screeningStart  DateTime
+  screeningEnd    DateTime
+  screeningThreshold Float  // km
+  screeningHorizonDays Float // 7 by default
+
+  // Risk + confidence
+  riskScore       Int      // 0-100 heuristic
+  riskLevel       String   // LOW | MODERATE | HIGH | CRITICAL
+  confidenceScore Int      // 0-100
+  confidenceLevel String   // LOW | MEDIUM | HIGH
+  riskFactorsJson String   // JSON of factor breakdown
+  riskWeightsJson String?  // JSON of weights used (provenance)
+  riskModelVersion String? // e.g. "v0.3-prototype"
+
+  // Lifecycle
+  status          String   @default("NEW") // NEW | UNDER_REVIEW | SIMULATING | MONITORING | RESOLVED | DISMISSED
+  notesJson       String   @default("[]")
+  timelineJson    String   @default("[]") // audit timeline entries
+
+  // Maneuver recommendations
+  bestScenarioJson String? // best simulated scenario JSON
+  recommendation  String?
+  secondaryConjunctionsJson String? // re-screen results after maneuver
+
+  // Validation
+  validationReference String? // "CelesTrak SOCRATES" or null
+  validationDetected Boolean?
+  validationTcaErrorMin Float? // minutes
+  validationRangeErrorKm Float?
+  validationRelVelError Float? // km/s
+
+  // Provenance (REQUIRED for every analysis)
+  analysisId      String   // UUID for this analysis run
+  dataSource      String   @default("CelesTrak") // CelesTrak | SENTINEL-DEMO
+  retrievedAt     DateTime @default(now())
+  primaryEpoch    DateTime?
+  secondaryEpoch  DateTime?
+  propagator      String?  // "sgp4 npm@1.0.10"
+  propagatorFrame String?  // "TEME"
+  snapshotId      String?  // reference to CatalogSnapshot, if used
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([primarySatId])
+  @@index([tca])
+  @@index([riskLevel])
+  @@index([status])
+  @@index([dataSource])
+  @@index([snapshotId])
+}
+
+// A timestamped, immutable snapshot of the catalog. Used to make analyses
+// reproducible — the analyst can say "this analysis was run against
+// snapshot CT-2026-08-19-1432".
+model CatalogSnapshot {
+  id              String   @id // e.g. "CT-2026-08-19-1432"
+  source          String   // "CelesTrak" | "SENTINEL-DEMO"
+  retrievedAt     DateTime
+  objectCount     Int
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([source])
+}
+
+// Log of refresh attempts — for debugging and audit
+model DataRefreshLog {
+  id              String   @id @default(cuid())
+  source          String
+  url             String
+  retrievedAt     DateTime @default(now())
+  status          String   // OK | FETCH_ERROR | PARSE_ERROR
+  recordsParsed   Int
+  recordsRejected Int
+  parseErrorsJson String   @default("[]")
+  durationMs      Int
+  notes           String?
+
+  @@index([retrievedAt])
+}
+
+model AnalysisReport {
+  id            String   @id @default(cuid())
+  conjunctionId String?
+  satelliteId   String?
+  reportType    String   // CONJUNCTION | MISSION | VALIDATION
+  contentJson   String   // full report payload
+  createdAt     DateTime @default(now())
+}
+
+// A professional orbital simulation run (STK Advanced CAT or SGP4 fallback).
+// Stored as a background job with full provenance.
+model SimulationRun {
+  id              String   @id @default(cuid())
+  conjunctionId  String
+  engine          String   // 'STK Advanced CAT' | 'SENTINEL SGP4 (fallback)'
+  engineVersion   String
+  status          String   // QUEUED | STARTING_STK | LOADING_DATA | PROPAGATING | RUNNING_CAT | EXTRACTING_RESULTS | COMPLETE | FAILED | STK_UNAVAILABLE
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  scenarioId      String?
+  analysisStart   String   // ISO 8601 UTC
+  analysisEnd     String
+  thresholdKm     Float
+  resultJson      String?  // full StkConjunctionResult JSON
+  rawReport       String?  // raw STK Connect command report (for provenance)
+  error           String?
+  // STK provenance
+  stkVersion      String?
+  stkScenarioId   String?
+  stkAnalysisId   String?
+  stkThreshold    Float?
+  stkAnalysisStart String?
+  stkAnalysisEnd  String?
+  stkResultTimestamp String?
+  stkRawReportHash String?
+
+  @@index([conjunctionId])
+  @@index([status])
+  @@index([engine])
+  @@index([startedAt])
+}
+
+// A configurable background analysis run with progress tracking.
+// POST /api/analysis returns the analysisId immediately (non-blocking).
+// GET /api/analysis/[id] polls for status updates with a progress percentage.
+model AnalysisRun {
+  id              String   @id @default(cuid())
+  status          String   @default("QUEUED")  // QUEUED | LOADING_DATA | FILTERING | COARSE_SCREEN | FINE_SCREEN | TCA_REFINEMENT | STK_ANALYSIS | RISK_ASSESSMENT | VALIDATION | COMPLETE | FAILED | CANCELLED
+  progress        Int      @default(0)          // 0-100
+  progressMessage String?
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  // Configuration (stored with the analysis for reproducibility)
+  configJson      String   // full AnalysisConfig JSON
+  preset          String?
+  // Results
+  conjunctionsFound Int    @default(0)
+  candidatesFiltered Int  @default(0)
+  resultJson      String?  // summary of results
+  error           String?
+  // Provenance
+  analysisId      String?  // UUID for the screening run
+  snapshotId      String?
+  engineUsed      String?  // 'SENTINEL SGP4' | 'STK Advanced CAT' | 'both'
+
+  @@index([status])
+  @@index([startedAt])
+}
+
+model EventLog {
+  id        String   @id @default(cuid())
+  eventType String   // DETECTION | OPERATOR_OPENED | SIMULATION_CREATED | STATUS_CHANGE | EXPORT | ...
+  payload   String   // JSON
+  createdAt DateTime @default(now())
+}

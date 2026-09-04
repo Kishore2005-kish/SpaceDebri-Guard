@@ -1,0 +1,534 @@
+     1→'use client';
+     2→import { useEffect, useState } from 'react';
+     3→import { Card } from '@/components/ui/card';
+     4→import { Badge } from '@/components/ui/badge';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Separator } from '@/components/ui/separator';
+     7→import { X, Activity, Crosshair, Zap, Globe, Shield, AlertTriangle, CheckCircle2, Radio, Clock, Gauge, Activity as ActivityIcon, ChevronRight } from 'lucide-react';
+     8→import dynamic from 'next/dynamic';
+     9→import { useToast } from '@/hooks/use-toast';
+    10→import { cn } from '@/lib/utils';
+    11→import { LineChart, Line, XAxis, YAxis, ReferenceLine, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+    12→
+    13→// Dynamic import of CesiumGlobe (client-only, no SSR)
+    14→const CesiumGlobe = dynamic(() => import('./cesium-globe').then(m => m.CesiumGlobe), {
+    15→  ssr: false,
+    16→  loading: () => (
+    17→    <div className="flex-1 flex items-center justify-center bg-black">
+    18→      <div className="text-center">
+    19→        <div className="text-emerald-400 font-mono text-sm animate-pulse">● Loading 3D Globe…</div>
+    20→      </div>
+    21→    </div>
+    22→  ),
+    23→});
+    24→
+    25→interface TrajectoryPoint {
+    26→  t: string; x: number; y: number; z: number;
+    27→  vx: number; vy: number; vz: number;
+    28→}
+    29→
+    30→interface SimResult {
+    31→  engine: string;
+    32→  engineVersion: string;
+    33→  primary: { catalogId: string; name: string };
+    34→  secondary: { catalogId: string; name: string; objectType: string };
+    35→  tca: string;
+    36→  minimumRangeKm: number;
+    37→  minimumSeparationKm: number;
+    38→  relativeVelocityKmPerSec: number;
+    39→  thresholdKm: number;
+    40→  analysisStart: string;
+    41→  analysisEnd: string;
+    42→  primaryTrajectory: TrajectoryPoint[];
+    43→  secondaryTrajectory: TrajectoryPoint[];
+    44→  separationSeries: { t: string; range: number }[];
+    45→  covarianceAvailable: boolean;
+    46→  collisionProbabilityAvailable: boolean;
+    47→  collisionProbability?: number;
+    48→  fallbackReason?: string;
+    49→  stkScenarioId?: string;
+    50→  stkVersion?: string;
+    51→}
+    52→
+    53→interface Comparison {
+    54→  sentinel: { tca: string; minimumRangeKm: number; relativeVelocityKmPerSec: number } | null;
+    55→  stk: { tca: string; minimumRangeKm: number; relativeVelocityKmPerSec: number } | null;
+    56→  socrates: { tca: string; minimumRangeKm: number; relativeVelocityKmPerSec: number } | null;
+    57→  tcaDifferenceSec: number | null;
+    58→  rangeDifferenceKm: number | null;
+    59→}
+    60→
+    61→interface SimRunStatus {
+    62→  id: string;
+    63→  status: string;
+    64→  engine: string;
+    65→  engineVersion: string;
+    66→  startedAt: string;
+    67→  completedAt: string | null;
+    68→  scenarioId: string | null;
+    69→  error: string | null;
+    70→}
+    71→
+    72→interface ConjunctionInfo {
+    73→  id: string;
+    74→  primaryName: string;
+    75→  secondaryName: string;
+    76→  secondaryObjectType: string;
+    77→  tca: string;
+    78→  minRange: number;
+    79→  relVelocity: number;
+    80→  riskScore: number;
+    81→  riskLevel: string;
+    82→  confidenceScore: number;
+    83→  confidenceLevel: string;
+    84→  primarySatId: string;
+    85→  secondarySatId: string;
+    86→  dataSource: string;
+    87→}
+    88→
+    89→const STATUS_LABELS: Record<string, string> = {
+    90→  QUEUED: 'Queued — waiting to start',
+    91→  STARTING_STK: 'Starting STK…',
+    92→  LOADING_DATA: 'Loading orbital data…',
+    93→  PROPAGATING: 'Propagating trajectories (SGP4)…',
+    94→  RUNNING_CAT: 'Running Advanced CAT…',
+    95→  EXTRACTING_RESULTS: 'Extracting results…',
+    96→  COMPLETE: 'Complete',
+    97→  FAILED: 'Failed',
+    98→  STK_UNAVAILABLE: 'STK unavailable — using SGP4 fallback',
+    99→};
+   100→
+   101→export function SimulationView({ conjunctionId, onClose }: { conjunctionId: string; onClose: () => void }) {
+   102→  const { toast } = useToast();
+   103→  const [conjunction, setConjunction] = useState<ConjunctionInfo | null>(null);
+   104→  const [simRun, setSimRun] = useState<SimRunStatus | null>(null);
+   105→  const [simResult, setSimResult] = useState<SimResult | null>(null);
+   106→  const [comparison, setComparison] = useState<Comparison | null>(null);
+   107→  const [loading, setLoading] = useState(true);
+   108→  const [running, setRunning] = useState(false);
+   109→
+   110→  // Load conjunction info
+   111→  useEffect(() => {
+   112→    fetch(`/api/conjunctions/${conjunctionId}`)
+   113→      .then(r => r.json())
+   114→      .then(j => { setConjunction(j.conjunction); })
+   115→      .catch(() => {});
+   116→  }, [conjunctionId]);
+   117→
+   118→  // Start a simulation when this view opens
+   119→  const startSim = async () => {
+   120→    setRunning(true);
+   121→    setSimResult(null);
+   122→    setComparison(null);
+   123→    try {
+   124→      const r = await fetch('/api/simulation/stk/run', {
+   125→        method: 'POST',
+   126→        headers: { 'Content-Type': 'application/json' },
+   127→        body: JSON.stringify({ conjunctionId }),
+   128→      });
+   129→      const j = await r.json();
+   130→      if (j.simulationId) {
+   131→        toast({ title: 'Simulation started', description: 'Running orbital analysis…' });
+   132→        // Poll for status
+   133→        const poll = async () => {
+   134→          const r2 = await fetch(`/api/simulation/stk/${j.simulationId}`);
+   135→          const j2 = await r2.json();
+   136→          if (j2.simulation) {
+   137→            setSimRun(j2.simulation);
+   138→            if (j2.simulation.status === 'COMPLETE') {
+   139→              // Load the result
+   140→              const r3 = await fetch(`/api/simulation/${j.simulationId}/trajectory`);
+   141→              const j3 = await r3.json();
+   142→              setSimResult(j3);
+   143→              // Load comparison
+   144→              const r4 = await fetch(`/api/simulation/${j.simulationId}/comparison?conjunctionId=${conjunctionId}`);
+   145→              const j4 = await r4.json();
+   146→              setComparison(j4);
+   147→              setLoading(false);
+   148→              setRunning(false);
+   149→              return;
+   150→            }
+   151→            if (j2.simulation.status === 'FAILED') {
+   152→              setRunning(false);
+   153→              toast({ title: 'Simulation failed', description: j2.simulation.error, variant: 'destructive' });
+   154→              return;
+   155→            }
+   156→          }
+   157→          setTimeout(poll, 1000);
+   158→        };
+   159→        poll();
+   160→      } else {
+   161→        throw new Error(j.error || 'Failed to start simulation');
+   162→      }
+   163→    } catch (e: any) {
+   164→      setRunning(false);
+   165→      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+   166→    }
+   167→  };
+   168→
+   169→  // Auto-start simulation on mount
+   170→  useEffect(() => {
+   171→    if (conjunction && !simRun && !running) {
+   172→      startSim();
+   173→    }
+   174→  }, [conjunction, simRun, running]);
+   175→
+   176→  // Time-to-TCA countdown (live updates)
+   177→  const [now, setNow] = useState<Date | null>(null);
+   178→  useEffect(() => {
+   179→    if (typeof window === 'undefined') return;
+   180→    // Set immediately so the countdown isn't blank for the first second
+   181→    const initialTimer = setTimeout(() => setNow(new Date()), 0);
+   182→    const i = setInterval(() => setNow(new Date()), 1000);
+   183→    return () => { clearTimeout(initialTimer); clearInterval(i); };
+   184→  }, []);
+   185→
+   186→  const tcaDate = conjunction ? new Date(conjunction.tca) : null;
+   187→  const tcaDiffMs = tcaDate && now ? tcaDate.getTime() - now.getTime() : 0;
+   188→  const tcaDiffHrs = Math.abs(tcaDiffMs / 3600000);
+   189→  const tcaDiffMin = Math.abs((tcaDiffMs % 3600000) / 60000);
+   190→  const tcaDiffStr = tcaDate && now
+   191→    ? `${tcaDiffMs > 0 ? 'T-' : 'T+'}${Math.floor(tcaDiffHrs)}h ${Math.floor(tcaDiffMin)}m`
+   192→    : '—';
+   193→
+   194→  const isStkFallback = simResult?.engine === 'SENTINEL SGP4 (fallback)';
+   195→
+   196→  return (
+   197→    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur flex flex-col">
+   198→      {/* Header */}
+   199→      <div className="border-b border-border bg-card/80 px-4 py-2 flex items-center justify-between shrink-0">
+   200→        <div className="flex items-center gap-3 min-w-0">
+   201→          <Radio className="h-5 w-5 text-primary pulse-critical" />
+   202→          <div className="min-w-0">
+   203→            <div className="flex items-center gap-2">
+   204→              <span className="font-mono text-sm font-bold">ORBITAL SIMULATION VIEW</span>
+   205→              {conjunction && (
+   206→                <>
+   207→                  <Badge variant="outline" className="font-mono text-[10px]">{conjunction.riskLevel}</Badge>
+   208→                  {simResult && (
+   209→                    <Badge variant="outline" className={cn('font-mono text-[9px]', isStkFallback ? 'text-amber-500 border-amber-500/40' : 'text-emerald-500 border-emerald-500/40')}>
+   210→                      {simResult.engine.toUpperCase()}
+   211→                    </Badge>
+   212→                  )}
+   213→                </>
+   214→              )}
+   215→            </div>
+   216→            {conjunction && (
+   217→              <div className="text-[10px] text-muted-foreground font-mono truncate">
+   218→                {conjunction.primaryName} ↔ {conjunction.secondaryName} · TCA {tcaDate?.toUTCString().replace(' GMT', ' UTC')}
+   219→              </div>
+   220→            )}
+   221→          </div>
+   222→        </div>
+   223→        <div className="flex items-center gap-2">
+   224→          <Button size="sm" variant="outline" onClick={startSim} disabled={running} className="gap-1.5 font-mono text-[11px]">
+   225→            <Zap className="h-3 w-3" /> {running ? 'RUNNING…' : 'RERUN SIMULATION'}
+   226→          </Button>
+   227→          <Button size="sm" variant="ghost" onClick={onClose} className="font-mono text-[11px]">
+   228→            <X className="h-4 w-4" />
+   229→          </Button>
+   230→        </div>
+   231→      </div>
+   232→
+   233→      {/* Body: 3-column layout */}
+   234→      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-[280px_1fr_320px]">
+   235→        {/* LEFT: event info */}
+   236→        <div className="overflow-y-auto scrollbar-thin p-3 space-y-3 border-r border-border bg-card/30">
+   237→          <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">EVENT INFORMATION</div>
+   238→          {conjunction && (
+   239→            <Card className="p-3 console-grid">
+   240→              <div className="space-y-2 font-mono text-[11px]">
+   241→                <div>
+   242→                  <div className="text-[9px] text-muted-foreground">PRIMARY</div>
+   243→                  <div className="font-bold text-emerald-500">{conjunction.primaryName}</div>
+   244→                  <div className="text-[9px] text-muted-foreground">NORAD {conjunction.primarySatId}</div>
+   245→                </div>
+   246→                <Separator />
+   247→                <div>
+   248→                  <div className="text-[9px] text-muted-foreground">SECONDARY</div>
+   249→                  <div className="font-bold text-amber-500">{conjunction.secondaryName}</div>
+   250→                  <div className="text-[9px] text-muted-foreground">{conjunction.secondaryObjectType} · NORAD {conjunction.secondarySatId}</div>
+   251→                </div>
+   252→                <Separator />
+   253→                <div className="grid grid-cols-2 gap-1">
+   254→                  <div>
+   255→                    <div className="text-[9px] text-muted-foreground">TCA</div>
+   256→                    <div className="font-bold tnum">{tcaDate?.toISOString().slice(11, 19)}Z</div>
+   257→                  </div>
+   258→                  <div>
+   259→                    <div className="text-[9px] text-muted-foreground">MISS DIST</div>
+   260→                    <div className="font-bold tnum text-red-500">{conjunction.minRange < 1 ? `${(conjunction.minRange * 1000).toFixed(0)} m` : `${conjunction.minRange.toFixed(3)} km`}</div>
+   261→                  </div>
+   262→                  <div>
+   263→                    <div className="text-[9px] text-muted-foreground">REL VEL</div>
+   264→                    <div className="font-bold tnum">{conjunction.relVelocity.toFixed(2)} km/s</div>
+   265→                  </div>
+   266→                  <div>
+   267→                    <div className="text-[9px] text-muted-foreground">RISK / CONF</div>
+   268→                    <div className="font-bold tnum">
+   269→                      <span className="text-red-500">{conjunction.riskScore}</span>
+   270→                      <span className="text-muted-foreground"> / </span>
+   271→                      <span className="text-amber-500">{conjunction.confidenceScore}</span>
+   272→                    </div>
+   273→                  </div>
+   274→                </div>
+   275→                <Separator />
+   276→                <div>
+   277→                  <div className="text-[9px] text-muted-foreground">DATA SOURCE</div>
+   278→                  <div className={cn('font-bold', conjunction.dataSource === 'CelesTrak' ? 'text-emerald-500' : 'text-yellow-500')}>
+   279→                    {conjunction.dataSource === 'CelesTrak' ? '● REAL CELESTRAK DATA' : '● SYNTHETIC DEMO DATA'}
+   280→                  </div>
+   281→                </div>
+   282→              </div>
+   283→            </Card>
+   284→          )}
+   285→
+   286→          {/* Time-to-TCA countdown */}
+   287→          {conjunction && (
+   288→            <Card className={cn('p-3 border', tcaDiffMs > 0 ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-red-500/40 bg-red-500/5')}>
+   289→              <div className="text-[9px] font-mono uppercase text-muted-foreground">TIME TO CLOSE APPROACH</div>
+   290→              <div className={cn('text-3xl font-mono font-bold tnum mt-1', tcaDiffMs > 0 ? 'text-emerald-500' : 'text-red-500')}>
+   291→                {tcaDiffStr}
+   292→              </div>
+   293→              <div className="text-[9px] font-mono text-muted-foreground mt-1">
+   294→                TCA: {tcaDate?.toISOString().slice(0, 19)}Z
+   295→              </div>
+   296→              <div className="text-[9px] font-mono text-muted-foreground">
+   297→                NOW: {now?.toISOString().slice(0, 19)}Z
+   298→              </div>
+   299→            </Card>
+   300→          )}
+   301→
+   302→          {/* Status panel */}
+   303→          {simRun && (
+   304→            <Card className="p-3">
+   305→              <div className="text-[9px] font-mono uppercase text-muted-foreground">SIMULATION STATUS</div>
+   306→              <div className={cn('font-mono text-xs font-bold mt-1',
+   307→                simRun.status === 'COMPLETE' ? 'text-emerald-500' :
+   308→                simRun.status === 'FAILED' ? 'text-red-500' :
+   309→                'text-amber-500')}>
+   310→                {STATUS_LABELS[simRun.status] ?? simRun.status}
+   311→              </div>
+   312→              {simRun.scenarioId && (
+   313→                <div className="text-[9px] font-mono text-muted-foreground mt-1">
+   314→                  Scenario: {simRun.scenarioId}
+   315→                </div>
+   316→              )}
+   317→              {simRun.error && (
+   318→                <div className="text-[9px] font-mono text-red-500 mt-1">{simRun.error}</div>
+   319→              )}
+   320→            </Card>
+   321→          )}
+   322→        </div>
+   323→
+   324→        {/* CENTER: 3D simulation */}
+   325→        <div className="overflow-hidden flex flex-col">
+   326→          {simResult && conjunction ? (
+   327→            <CesiumGlobe
+   328→              primaryTrajectory={simResult.primaryTrajectory || []}
+   329→              secondaryTrajectory={simResult.secondaryTrajectory || []}
+   330→              primaryName={conjunction.primaryName || 'Primary'}
+   331→              secondaryName={conjunction.secondaryName || 'Secondary'}
+   332→              tca={simResult.tca || new Date().toISOString()}
+   333→              minimumRangeKm={simResult.minimumRangeKm || 0}
+   334→            />
+   335→          ) : (
+   336→            <div className="flex-1 flex items-center justify-center bg-[#050a14]">
+   337→              <div className="text-center">
+   338→                <div className="font-mono text-sm text-muted-foreground animate-pulse">
+   339→                  {running ? '● Running orbital simulation…' : 'Loading…'}
+   340→                </div>
+   341→                {simRun && (
+   342→                  <div className="font-mono text-[10px] text-amber-500 mt-2">
+   343→                    {STATUS_LABELS[simRun.status] ?? simRun.status}
+   344→                  </div>
+   345→                )}
+   346→              </div>
+   347→            </div>
+   348→          )}
+   349→
+   350→          {/* Separation chart at bottom */}
+   351→          {simResult && (simResult.separationSeries?.length ?? 0) > 0 && (
+   352→            <div className="h-[160px] border-t border-border bg-[#050a14] p-2">
+   353→              <div className="text-[9px] font-mono uppercase text-muted-foreground mb-1">SEPARATION VS TIME</div>
+   354→              <ResponsiveContainer width="100%" height="90%">
+   355→                <LineChart
+   356→                  data={(simResult.separationSeries || []).map(s => ({
+   357→                    t: s?.t ? new Date(s.t).toISOString().slice(11, 16) : '--:--',
+   358→                    range: s?.range ?? 0,
+   359→                  }))}
+   360→                  margin={{ top: 4, right: 16, bottom: 4, left: 0 }}
+   361→                >
+   362→                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+   363→                  <XAxis dataKey="t" stroke="#888" tick={{ fill: '#888', fontSize: 9, fontFamily: 'monospace' }} />
+   364→                  <YAxis stroke="#888" tick={{ fill: '#888', fontSize: 9, fontFamily: 'monospace' }} label={{ value: 'km', angle: -90, position: 'insideLeft', style: { fill: '#888', fontSize: 9 } }} />
+   365→                  <Tooltip
+   366→                    contentStyle={{ background: '#0a0e16', border: '1px solid rgba(255,255,255,0.1)', fontFamily: 'monospace', fontSize: 10 }}
+   367→                    formatter={(v: any) => [`${Number(v).toFixed(3)} km`, 'Range']}
+   368→                  />
+   369→                  {simResult.tca && (
+   370→                    <ReferenceLine x={new Date(simResult.tca).toISOString().slice(11, 16)} stroke="#ff5050" strokeDasharray="3 3" label={{ value: 'TCA', fill: '#ff5050', fontSize: 9, fontFamily: 'monospace', position: 'top' }} />
+   371→                  )}
+   372→                  <ReferenceLine y={simResult.thresholdKm ?? 5} stroke="rgba(255,180,80,0.5)" strokeDasharray="2 4" />
+   373→                  <Line type="monotone" dataKey="range" stroke="#5ee695" strokeWidth={1.5} dot={false} />
+   374→                </LineChart>
+   375→              </ResponsiveContainer>
+   376→            </div>
+   377→          )}
+   378→        </div>
+   379→
+   380→        {/* RIGHT: engine comparison + provenance */}
+   381→        <div className="overflow-y-auto scrollbar-thin p-3 space-y-3 border-l border-border bg-card/30">
+   382→          {/* Engine comparison table */}
+   383→          <Card className="p-3">
+   384→            <div className="text-[10px] font-mono uppercase tracking-wider text-primary mb-2 flex items-center gap-1.5">
+   385→              <Activity className="h-3 w-3" /> ENGINE COMPARISON
+   386→            </div>
+   387→            {comparison ? (
+   388→              <table className="w-full text-[10px] font-mono">
+   389→                <thead className="text-[9px] text-muted-foreground uppercase">
+   390→                  <tr>
+   391→                    <th className="text-left pb-1">Metric</th>
+   392→                    <th className="text-right pb-1">SENTINEL</th>
+   393→                    <th className="text-right pb-1">STK</th>
+   394→                    <th className="text-right pb-1">SOCRATES</th>
+   395→                  </tr>
+   396→                </thead>
+   397→                <tbody className="divide-y divide-border">
+   398→                  <tr>
+   399→                    <td className="py-1.5">TCA</td>
+   400→                    <td className="text-right tnum text-emerald-500">{comparison.sentinel?.tca ? new Date(comparison.sentinel.tca).toISOString().slice(11, 19) + 'Z' : '—'}</td>
+   401→                    <td className="text-right tnum text-amber-500">{comparison.stk?.tca ? new Date(comparison.stk.tca).toISOString().slice(11, 19) + 'Z' : '—'}</td>
+   402→                    <td className="text-right tnum">{comparison.socrates?.tca ? new Date(comparison.socrates.tca).toISOString().slice(11, 19) + 'Z' : '—'}</td>
+   403→                  </tr>
+   404→                  <tr>
+   405→                    <td className="py-1.5">Range</td>
+   406→                    <td className="text-right tnum text-emerald-500">{comparison.sentinel?.minimumRangeKm != null ? comparison.sentinel.minimumRangeKm.toFixed(3) : '—'}</td>
+   407→                    <td className="text-right tnum text-amber-500">{comparison.stk?.minimumRangeKm != null ? comparison.stk.minimumRangeKm.toFixed(3) : '—'}</td>
+   408→                    <td className="text-right tnum">{comparison.socrates?.minimumRangeKm != null ? comparison.socrates.minimumRangeKm.toFixed(3) : '—'}</td>
+   409→                  </tr>
+   410→                  <tr>
+   411→                    <td className="py-1.5">Rel vel</td>
+   412→                    <td className="text-right tnum text-emerald-500">{comparison.sentinel?.relativeVelocityKmPerSec != null ? comparison.sentinel.relativeVelocityKmPerSec.toFixed(2) : '—'}</td>
+   413→                    <td className="text-right tnum text-amber-500">{comparison.stk?.relativeVelocityKmPerSec != null ? comparison.stk.relativeVelocityKmPerSec.toFixed(2) : '—'}</td>
+   414→                    <td className="text-right tnum">{comparison.socrates?.relativeVelocityKmPerSec != null ? comparison.socrates.relativeVelocityKmPerSec.toFixed(2) : '—'}</td>
+   415→                  </tr>
+   416→                </tbody>
+   417→              </table>
+   418→            ) : (
+   419→              <div className="text-[10px] font-mono text-muted-foreground">Awaiting comparison data…</div>
+   420→            )}
+   421→            {comparison && (comparison.tcaDifferenceSec !== null || comparison.rangeDifferenceKm !== null) && (
+   422→              <div className="mt-2 pt-2 border-t border-border text-[10px] font-mono">
+   423→                <div className="text-muted-foreground mb-1">DIFFERENCE (STK vs SENTINEL)</div>
+   424→                <div className="flex justify-between">
+   425→                  <span>TCA:</span>
+   426→                  <span className="tnum">{comparison.tcaDifferenceSec !== null ? `±${comparison.tcaDifferenceSec.toFixed(2)} s` : '—'}</span>
+   427→                </div>
+   428→                <div className="flex justify-between">
+   429→                  <span>Range:</span>
+   430→                  <span className="tnum">{comparison.rangeDifferenceKm !== null ? `±${(comparison.rangeDifferenceKm * 1000).toFixed(0)} m` : '—'}</span>
+   431→                </div>
+   432→              </div>
+   433→            )}
+   434→          </Card>
+   435→
+   436→          {/* Engine + fallback note */}
+   437→          {simResult && (
+   438→            <Card className={cn('p-3 border', isStkFallback ? 'border-amber-500/40 bg-amber-500/5' : 'border-emerald-500/40 bg-emerald-500/5')}>
+   439→              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">SIMULATION ENGINE</div>
+   440→              <div className={cn('font-mono text-sm font-bold mt-1', isStkFallback ? 'text-amber-500' : 'text-emerald-500')}>
+   441→                {isStkFallback ? '● SENTINEL SGP4 (fallback)' : '● STK ADVANCED CAT'}
+   442→              </div>
+   443→              <div className="text-[10px] font-mono text-muted-foreground mt-1">
+   444→                {simResult.engineVersion}
+   445→              </div>
+   446→              {isStkFallback && (
+   447→                <div className="text-[10px] font-mono text-amber-500 mt-2 pt-2 border-t border-amber-500/20">
+   448→                  STK unavailable. This simulation used SENTINEL's integrated SGP4 engine.
+   449→                  The result is valid orbital mechanics, but is NOT a professional STK
+   450→                  Advanced CAT analysis.
+   451→                </div>
+   452→              )}
+   453→              <div className="text-[10px] font-mono text-muted-foreground mt-2 pt-2 border-t border-border">
+   454→                <div className="flex justify-between"><span>Scenario ID</span><span>{simResult.stkScenarioId ?? '—'}</span></div>
+   455→                <div className="flex justify-between"><span>STK version</span><span>{simResult.stkVersion ?? '—'}</span></div>
+   456→                <div className="flex justify-between"><span>Analysis start</span><span className="truncate max-w-[140px]">{simResult.analysisStart ? `${simResult.analysisStart.slice(0, 19)}Z` : '—'}</span></div>
+   457→                <div className="flex justify-between"><span>Analysis end</span><span className="truncate max-w-[140px]">{simResult.analysisEnd ? `${simResult.analysisEnd.slice(0, 19)}Z` : '—'}</span></div>
+   458→                <div className="flex justify-between"><span>Threshold</span><span className="tnum">{simResult.thresholdKm} km</span></div>
+   459→              </div>
+   460→            </Card>
+   461→          )}
+   462→
+   463→          {/* Covariance / collision-probability panel */}
+   464→          {simResult && (
+   465→            <Card className="p-3 border-red-500/30 bg-red-500/5">
+   466→              <div className="text-[10px] font-mono uppercase tracking-wider text-red-500 mb-1 flex items-center gap-1.5">
+   467→                <AlertTriangle className="h-3 w-3" /> COLLISION PROBABILITY
+   468→              </div>
+   469→              {simResult.collisionProbabilityAvailable ? (
+   470→                <>
+   471→                  <div className="text-2xl font-mono font-bold tnum text-red-500">
+   472→                    {(simResult.collisionProbability! * 100).toFixed(2)}%
+   473→                  </div>
+   474→                  <div className="text-[9px] font-mono text-muted-foreground mt-1">
+   475→                    Source: {simResult.engine}
+   476→                    <br />Inputs: primary covariance, secondary covariance, hard-body radius
+   477→                  </div>
+   478→                </>
+   479→              ) : (
+   480→                <>
+   481→                  <div className="text-lg font-mono font-bold text-amber-500">UNAVAILABLE</div>
+   482→                  <div className="text-[9px] font-mono text-muted-foreground mt-1">
+   483→                    Reason: Covariance information is not available from the public GP dataset.
+   484→                    <br /><br />Per NASA CARA: "TLE-derived analytic theory data does not provide the
+   485→                    covariance needed for probabilistic collision assessment."
+   486→                    <br /><br />Source: <a href="https://www.nasa.gov/cara/step-2-close-approach-risk-assessment/" className="text-primary hover:underline">NASA CARA</a>
+   487→                  </div>
+   488→                </>
+   489→              )}
+   490→            </Card>
+   491→          )}
+   492→
+   493→          {/* Uncertainty note */}
+   494→          <Card className="p-2 border-amber-500/30 bg-amber-500/5">
+   495→            <div className="text-[9px] font-mono text-amber-500">
+   496→              ⚠ Trajectory uncertainty not available from current public GP data.
+   497→              The predicted trajectory is the best-estimate propagated state.
+   498→            </div>
+   499→          </Card>
+   500→
+   501→          {/* Prove-this-prediction button */}
+   502→          <Card className="p-3 border-primary/40 bg-primary/5">
+   503→            <div className="text-[10px] font-mono uppercase tracking-wider text-primary mb-2 flex items-center gap-1.5">
+   504→              <Shield className="h-3 w-3" /> PROVE THIS PREDICTION
+   505→            </div>
+   506→            <div className="space-y-1 text-[10px] font-mono">
+   507→              <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> Real CelesTrak data</div>
+   508→              <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> Real catalog IDs (no truncation)</div>
+   509→              <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> Real SGP4 propagation</div>
+   510→              <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> Trajectory from actual state vectors</div>
+   511→              <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> Engine comparison (SENTINEL vs STK vs SOCRATES)</div>
+   512→              <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-emerald-500" /> Provenance recorded</div>
+   513→              <div className="flex items-center gap-1.5">
+   514→                {isStkFallback
+   515→                  ? <><AlertTriangle className="h-3 w-3 text-amber-500" /> STK unavailable (SGP4 fallback used)</>
+   516→                  : <><CheckCircle2 className="h-3 w-3 text-emerald-500" /> STK Advanced CAT executed</>
+   517→                }
+   518→              </div>
+   519→            </div>
+   520→          </Card>
+   521→
+   522→          {/* Disclaimer */}
+   523→          <div className="text-[9px] font-mono text-muted-foreground p-2 border border-border rounded">
+   524→            ⚠ Simulation only — not a flight command. Operational decisions require authoritative orbital data and qualified flight-dynamics analysis.
+   525→            <br /><br />
+   526→            This visualization shows the PREDICTED close approach (conjunction), not a confirmed collision.
+   527→            Professional collision probability requires covariance data not present in the public GP dataset.
+   528→          </div>
+   529→        </div>
+   530→      </div>
+   531→    </div>
+   532→  );
+   533→}
+   534→
