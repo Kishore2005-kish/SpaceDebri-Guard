@@ -35,5 +35,5 @@ for (const [name, status] of Object.entries(results)) {
 }
 
 const allPass = Object.values(results).every(s => s === 'PASS');
-console.log(`\n  RESULT: ${allPass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m'}\n');
+console.log('\n  RESULT: ' + (allPass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m') + '\n');
 process.exit(allPass ? 0 : 1);

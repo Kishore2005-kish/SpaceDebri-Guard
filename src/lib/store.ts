@@ -5,7 +5,9 @@ export type ViewKey =
   | 'overview' 
   | 'satellites' 
   | 'analyze' 
+  | 'analysis'
   | 'simulation' 
+  | 'conjunctions'
   | 'history' 
   | 'docs'
   | 'weather-dashboard'
@@ -17,6 +19,13 @@ export type ViewKey =
 interface UIState {
   view: ViewKey;
   setView: (v: ViewKey) => void;
+  selectedSatellite: {
+    databaseId: string;
+    catalogId: string;
+    name: string;
+  } | null;
+  selectSatellite: (satellite: { id: string; name: string }) => void;
+  clearSelectedSatellite: () => void;
   selectedConjunctionId: string | null;
   openConjunction: (id: string) => void;
   closeConjunction: () => void;
@@ -24,6 +33,7 @@ interface UIState {
   openSimulation: (id: string) => void;
   closeSimulation: () => void;
   demoActive: boolean;
+  demoStep: number;
   startDemo: () => void;
   endDemo: () => void;
 }
@@ -31,6 +41,15 @@ interface UIState {
 export const useUI = create<UIState>((set) => ({
   view: 'overview',
   setView: (v) => set({ view: v }),
+  selectedSatellite: null,
+  selectSatellite: (satellite) => set({
+    selectedSatellite: {
+      databaseId: satellite.id,
+      catalogId: satellite.id,
+      name: satellite.name,
+    },
+  }),
+  clearSelectedSatellite: () => set({ selectedSatellite: null }),
   selectedConjunctionId: null,
   openConjunction: (id) => set({ selectedConjunctionId: id }),
   closeConjunction: () => set({ selectedConjunctionId: null }),
@@ -38,6 +57,7 @@ export const useUI = create<UIState>((set) => ({
   openSimulation: (id) => set({ simulationConjunctionId: id }),
   closeSimulation: () => set({ simulationConjunctionId: null }),
   demoActive: false,
+  demoStep: 0,
   startDemo: () => set({ demoActive: true, view: 'overview' }),
   endDemo: () => set({ demoActive: false }),
 }));

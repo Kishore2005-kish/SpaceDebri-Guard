@@ -103,8 +103,8 @@ export const DEFAULT_SCREENING_THRESHOLD_KM = 5;
  * before any SGP4 propagation.
  */
 export function canApproachByAltitude(
-  primary: { perigeeKm?: number; apogeeKm?: number; semiMajorAxisKm?: number },
-  secondary: { perigeeKm?: number; apogeeKm?: number; semiMajorAxisKm?: number },
+  primary: { perigeeKm?: number | null; apogeeKm?: number | null; semiMajorAxisKm?: number | null },
+  secondary: { perigeeKm?: number | null; apogeeKm?: number | null; semiMajorAxisKm?: number | null },
   marginKm = 50,
 ): boolean {
   // If we don't have perigee/apogee, fall back to semi-major axis comparison

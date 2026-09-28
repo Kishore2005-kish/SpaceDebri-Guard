@@ -9,6 +9,7 @@ import { SimulationListView } from '@/components/simulation/simulation-list-view
 import { HistoryView } from '@/components/simulation/history-view';
 import { DocsView } from '@/components/dashboard/docs-view';
 import { SimulationView } from '@/components/simulation/simulation-view';
+import { ConjunctionsView } from '@/components/conjunction/conjunctions-view';
 import { useUI } from '@/lib/store';
 
 // Space Weather imports
@@ -32,6 +33,8 @@ export default function Home() {
             {view === 'overview' && <OverviewView />}
             {view === 'satellites' && <SatellitesView />}
             {view === 'analyze' && <AnalyzeView />}
+            {view === 'analysis' && <AnalyzeView />}
+            {view === 'conjunctions' && <ConjunctionsView />}
             {view === 'simulation' && <SimulationListView />}
             {view === 'history' && <HistoryView />}
             {view === 'docs' && <DocsView />}

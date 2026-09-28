@@ -115,6 +115,8 @@ export const TrendChart = ({ data }: TrendChartProps) => {
               tickLine={false}
               axisLine={{ stroke: '#334155' }}
             />
+            {/* The tooltip component is intentionally local to this chart. */}
+            {/* eslint-disable-next-line react-hooks/static-components */}
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '3 3' }} />
             <Area 
               type="monotone" 

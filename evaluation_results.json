@@ -1,0 +1,169 @@
+{
+  "dataset_time_range": {
+    "start": "2000-01-07 00:00:00",
+    "end": "2019-12-31 00:00:00"
+  },
+  "train_period": {
+    "start": "2000-01-07 00:00:00",
+    "end": "2015-12-31 00:00:00"
+  },
+  "test_period": {
+    "start": "2016-01-01 00:00:00",
+    "end": "2019-12-31 00:00:00"
+  },
+  "training_class_distribution": {
+    "total": 2805,
+    "counts": {
+      "Low": 1227,
+      "Medium": 999,
+      "High": 579
+    },
+    "percentages": {
+      "Low": 0.4374331550802139,
+      "Medium": 0.35614973262032085,
+      "High": 0.20641711229946524
+    }
+  },
+  "test_class_distribution": {
+    "total": 1219,
+    "counts": {
+      "Low": 1205,
+      "Medium": 9,
+      "High": 5
+    },
+    "percentages": {
+      "Low": 0.9885151763740772,
+      "Medium": 0.007383100902378999,
+      "High": 0.004101722723543888
+    }
+  },
+  "random_split_metrics": {
+    "accuracy": 0.808695652173913,
+    "macro_precision": 0.7541959379653284,
+    "macro_recall": 0.7328963946664512,
+    "macro_f1": 0.7402070909693964,
+    "per_class": {
+      "High": {
+        "precision": 0.7216494845360825,
+        "recall": 0.5833333333333334,
+        "f1": 0.6451612903225806,
+        "pr_auc": 0.7230928379484954
+      },
+      "Low": {
+        "precision": 0.919661733615222,
+        "recall": 0.9100418410041841,
+        "f1": 0.9148264984227129,
+        "pr_auc": 0.976840836889389
+      },
+      "Medium": {
+        "precision": 0.6212765957446809,
+        "recall": 0.7053140096618358,
+        "f1": 0.6606334841628959,
+        "pr_auc": 0.6277778885900289
+      }
+    },
+    "confusion_matrix": [
+      [
+        70,
+        2,
+        48
+      ],
+      [
+        2,
+        435,
+        41
+      ],
+      [
+        25,
+        36,
+        146
+      ]
+    ],
+    "classes_order": [
+      "High",
+      "Low",
+      "Medium"
+    ]
+  },
+  "chronological_metrics": {
+    "accuracy": 0.9876948318293683,
+    "macro_precision": 0.44196510560146923,
+    "macro_recall": 0.4433379437528815,
+    "macro_f1": 0.44265010351966877,
+    "per_class": {
+      "High": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "pr_auc": 0.3067921146953405
+      },
+      "Low": {
+        "precision": 0.9925619834710744,
+        "recall": 0.9966804979253112,
+        "f1": 0.9946169772256729,
+        "pr_auc": 0.9989450647881267
+      },
+      "Medium": {
+        "precision": 0.3333333333333333,
+        "recall": 0.3333333333333333,
+        "f1": 0.3333333333333333,
+        "pr_auc": 0.27420456172308405
+      }
+    },
+    "confusion_matrix": [
+      [
+        0,
+        3,
+        2
+      ],
+      [
+        0,
+        1201,
+        4
+      ],
+      [
+        0,
+        6,
+        3
+      ]
+    ],
+    "classes_order": [
+      "High",
+      "Low",
+      "Medium"
+    ]
+  },
+  "model_configuration": {
+    "model": "RandomForestClassifier",
+    "n_estimators": 500,
+    "class_weight": {
+      "Low": 1,
+      "Medium": 3,
+      "High": 10
+    },
+    "random_state": 42
+  },
+  "feature_list": [
+    "proton_flux",
+    "proton_lag1",
+    "proton_lag2",
+    "proton_roll3",
+    "proton_roll7",
+    "proton_trend",
+    "proton_spike",
+    "xray_lag1",
+    "xray_lag2",
+    "xray_roll3",
+    "xray_roll7",
+    "xray_trend",
+    "xray_spike",
+    "kp_index",
+    "kp_lag1",
+    "kp_lag2",
+    "kp_roll3",
+    "kp_trend",
+    "bz",
+    "bz_lag1"
+  ],
+  "evaluation_timestamp": "2026-09-27T18:20:54.121360"
+}

@@ -1,0 +1,178 @@
+==============================================================================
+STEP 12 — FEATURE MATRIX VALIDATION (BASELINE vs REBUILT)
+==============================================================================
+Generated (UTC): 2026-09-27T14:13:44.817394+00:00
+
+PATHS
+  Baseline (production): /Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.csv
+  Rebuilt (candidate)  : /Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.REBUILT_STEP11.csv
+
+FEATURE SET (order fixed)
+  ['proton_flux', 'proton_lag1', 'proton_lag2', 'proton_roll3', 'proton_roll7', 'proton_trend', 'proton_spike', 'xray_lag1', 'xray_lag2', 'xray_roll3', 'xray_roll7', 'xray_trend', 'xray_spike', 'kp_index', 'kp_lag1', 'kp_lag2', 'kp_roll3', 'kp_trend', 'bz', 'bz_lag1']
+  Target: target_next_day = next calendar day risk_level
+
+==============================================================================
+PART 2 — ROW COUNTS BY PIPELINE STAGE
+==============================================================================
+  [Baseline]
+    1. Raw input rows                          : 4,031
+    2. Rows after calendar expansion (range)   : 7,306
+    3. Original physical rows retained         : 4,031
+    4. Rows with complete feature values       : 3,818
+    5. Rows with complete target values        : 3,991
+    6. Final usable ML rows (features+target)  : 3,788
+
+  Where rows are lost:
+    • Calendar filter: retained count equals raw (True); no synthetic observation rows kept.
+    • Feature incomplete (has date, missing ≥1 feature): 213 physical rows (4,031 → 3,818).
+    • Target unavailable (next calendar day missing or no risk): 30 rows had full features but no target.
+    • Final dropna: removes any row missing features OR target → 3,788 rows.
+    • Additional loss from feature-complete set to final: 30 (target missing on calendar-next-day gaps or edge last day).
+
+  [Rebuilt]
+    1. Raw input rows                          : 5,929
+    2. Rows after calendar expansion (range)   : 7,306
+    3. Original physical rows retained         : 5,929
+    4. Rows with complete feature values       : 5,619
+    5. Rows with complete target values        : 5,865
+    6. Final usable ML rows (features+target)  : 5,577
+
+  Where rows are lost:
+    • Calendar filter: retained count equals raw (True); no synthetic observation rows kept.
+    • Feature incomplete (has date, missing ≥1 feature): 310 physical rows (5,929 → 5,619).
+    • Target unavailable (next calendar day missing or no risk): 42 rows had full features but no target.
+    • Final dropna: removes any row missing features OR target → 5,577 rows.
+    • Additional loss from feature-complete set to final: 42 (target missing on calendar-next-day gaps or edge last day).
+
+==============================================================================
+PART 3 — YEAR-BY-YEAR (2000–2020)
+==============================================================================
+  Year   Set           Raw  UsableML  Dropped    Low    Med   High
+  ----------------------------------------------------------------------
+  2000   baseline      366       360        6     40    180    140
+  2000   rebuilt       366       360        6     40    180    140
+
+  2001   baseline      365       365        0     81    122    162
+  2001   rebuilt       365       365        0     81    122    162
+
+  2002   baseline      342       328       14     46    145    137
+  2002   rebuilt       342       328       14     46    145    137
+
+  2003   baseline      287       279        8    214     46     19
+  2003   rebuilt       287       280        7    214     47     19
+
+  2004   baseline        0         0        0      0      0      0
+  2004   rebuilt       366       366        0    336     28      2
+
+  2005   baseline        0         0        0      0      0      0
+  2005   rebuilt       357       350        7    329     13      8
+
+  2006   baseline        0         0        0      0      0      0
+  2006   rebuilt       302       259       43    258      1      0
+
+  2007   baseline        0         0        0      0      0      0
+  2007   rebuilt        98        58       40     58      0      0
+
+  2008   baseline        0         0        0      0      0      0
+  2008   rebuilt        12         5        7      5      0      0
+
+  2009   baseline        0         0        0      0      0      0
+  2009   rebuilt        33        14       19     14      0      0
+
+  2010   baseline        0         0        0      0      0      0
+  2010   rebuilt       365       365        0    364      1      0
+
+  2011   baseline        0         0        0      0      0      0
+  2011   rebuilt       365       365        0    269     84     12
+
+  2012   baseline      365       352       13    244     95     13
+  2012   rebuilt       365       358        7    249     96     13
+
+  2013   baseline      364       357        7    241     99     17
+  2013   rebuilt       364       357        7    241     99     17
+
+  2014   baseline      360       335       25    102    166     67
+  2014   rebuilt       360       335       25    102    166     67
+
+  2015   baseline      362       341       21    218    117      6
+  2015   rebuilt       362       341       21    218    117      6
+
+  2016   baseline      366       366        0    362      4      0
+  2016   rebuilt       366       366        0    362      4      0
+
+  2017   baseline      348       307       41    298      4      5
+  2017   rebuilt       348       307       41    298      4      5
+
+  2018   baseline      217       146       71    146      0      0
+  2018   rebuilt       217       146       71    146      0      0
+
+  2019   baseline      288       252       36    252      0      0
+  2019   rebuilt       288       252       36    252      0      0
+
+  2020   baseline        1         0        1      0      0      0
+  2020   rebuilt         1         0        1      0      0      0
+
+==============================================================================
+PART 4 — CLASS DISTRIBUTION (FINAL USABLE ML ONLY)
+==============================================================================
+  [Baseline] n=3,788
+    Low: 2,244 (59.24%)
+    Medium: 978 (25.82%)
+    High: 566 (14.94%)
+  [Rebuilt] n=5,577
+    Low: 3,882 (69.61%)
+    Medium: 1,107 (19.85%)
+    High: 588 (10.54%)
+
+==============================================================================
+PART 5 — GAP BEHAVIOR (REBUILT, 2007–2009 REGION)
+==============================================================================
+  Calendar-aware lags/rolls use asfreq('D'); missing days → NaN in features.
+  Sample rows around 2008-04-04 … 2009-06-01 gap:
+    {"date": "2008-03-31", "proton_flux": 17000.0, "risk_level": "Low", "target_next_day": "Low", "proton_lag1": 16000.0, "proton_lag2": 17000.0, "proton_roll3": 16666.666666666668, "proton_roll7": 17142.85714285714, "proton_trend": -1000.0, "proton_spike": 0.0, "kp_lag1": 2.125, "bz_lag1": -1.9}
+    {"date": "2008-04-01", "proton_flux": 16000.0, "risk_level": "Low", "target_next_day": "Low", "proton_lag1": 17000.0, "proton_lag2": 16000.0, "proton_roll3": 16333.333333333334, "proton_roll7": 16857.14285714286, "proton_trend": 1000.0, "proton_spike": 0.0, "kp_lag1": 1.041625, "bz_lag1": -1.4}
+    {"date": "2008-04-02", "proton_flux": 17000.0, "risk_level": "Low", "target_next_day": "Low", "proton_lag1": 16000.0, "proton_lag2": 17000.0, "proton_roll3": 16666.666666666668, "proton_roll7": 16714.285714285714, "proton_trend": -1000.0, "proton_spike": 0.0, "kp_lag1": 1.0835, "bz_lag1": -1.9}
+    {"date": "2008-04-03", "proton_flux": 18000.0, "risk_level": "Low", "target_next_day": "Low", "proton_lag1": 17000.0, "proton_lag2": 16000.0, "proton_roll3": 17000.0, "proton_roll7": 16857.14285714286, "proton_trend": 1000.0, "proton_spike": 0.0, "kp_lag1": 0.2498749999999999, "bz_lag1": 1.4}
+    {"date": "2008-04-04", "proton_flux": 18000.0, "risk_level": "Low", "target_next_day": null, "proton_lag1": 18000.0, "proton_lag2": 17000.0, "proton_roll3": 17666.666666666668, "proton_roll7": 17000.0, "proton_trend": 1000.0, "proton_spike": 0.0, "kp_lag1": 0.458375, "bz_lag1": -0.1}
+    {"date": "2009-06-01", "proton_flux": 20000.0, "risk_level": "Low", "target_next_day": null, "proton_lag1": null, "proton_lag2": null, "proton_roll3": null, "proton_roll7": null, "proton_trend": null, "proton_spike": 0.0, "kp_lag1": null, "bz_lag1": null}
+
+==============================================================================
+PART 6 — TARGET VALIDATION
+==============================================================================
+  Examples where next calendar day is absent from raw data:
+    {'date': '2002-01-14', 'risk_level_today': 'High', 'next_calendar_day': '2002-01-15', 'next_calendar_day_in_dataset': False, 'target_next_day': None, 'target_correctly_unavailable': True}
+    {'date': '2002-09-30', 'risk_level_today': 'Medium', 'next_calendar_day': '2002-10-01', 'next_calendar_day_in_dataset': False, 'target_next_day': None, 'target_correctly_unavailable': True}
+    {'date': '2003-03-31', 'risk_level_today': 'Low', 'next_calendar_day': '2003-04-01', 'next_calendar_day_in_dataset': False, 'target_next_day': None, 'target_correctly_unavailable': True}
+    {'date': '2005-10-20', 'risk_level_today': 'Low', 'next_calendar_day': '2005-10-21', 'next_calendar_day_in_dataset': False, 'target_next_day': None, 'target_correctly_unavailable': True}
+    {'date': '2006-01-08', 'risk_level_today': 'Low', 'next_calendar_day': '2006-01-09', 'next_calendar_day_in_dataset': False, 'target_next_day': None, 'target_correctly_unavailable': True}
+    {'date': '2006-01-30', 'risk_level_today': 'Low', 'next_calendar_day': '2006-01-31', 'next_calendar_day_in_dataset': False, 'target_next_day': None, 'target_correctly_unavailable': True}
+
+==============================================================================
+PART 7 — FUTURE-LEAKAGE CHECK
+==============================================================================
+  • proton_lag1 / lag2: max info at T (value at T-1, T-2 calendar days)
+  • proton_roll3 / roll7: max info at T (includes same-day proton_flux at T)
+  • proton_trend: max info at T
+  • proton_spike: max info at T
+  • xray_* (lag, roll, trend, spike): max info at T
+  • kp_lag1, kp_lag2, kp_roll3, kp_trend: max info at T
+  • bz_lag1: max info at T
+  • proton_flux, kp_index, bz (direct): max info at T
+  • target_next_day: max info at T+1 (allowed for supervised target)
+  No feature lookahead concerns identified (static review).
+
+==============================================================================
+PART 8 — BASELINE vs REBUILT SUMMARY
+==============================================================================
+  Raw rows           : 4,031 → 5,929 (Δ +1,898)
+  Final usable ML    : 3,788 → 5,577 (Δ +1,789)
+  Usable ML in 2004–2011 band gained: +1,782
+
+==============================================================================
+PART 9 — DECISION DATA (VALIDATION ONLY — NO PROMOTION)
+==============================================================================
+  1. New ML training examples from 2004–2011 raw (+1,898 raw): ~1,782 usable ML rows
+  2. Meaningful usable years (≥100 ML rows): ['2004', '2005', '2006', '2010', '2011']
+  3. Sparse years (>50% dropped or very low usable): ['2008', '2009']
+  4. Proceed to model evaluation (not retrain yet)? Yes — candidate adds usable rows; methodology unchanged.
+  5. Methodological fixes before retrain: none from leakage review; sparse 2007–2009 years may limit value of those years in training.

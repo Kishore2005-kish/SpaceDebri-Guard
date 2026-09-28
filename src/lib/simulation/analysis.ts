@@ -28,6 +28,7 @@ import { propagateSgp4, SGP4_VERSION, SGP4_FRAME, clearSatrecCache } from '@/lib
 import { computeRisk, computeConfidence, DEFAULT_RISK_WEIGHTS, RiskWeights } from '@/lib/risk/engine';
 import { OrbitalObject } from '@/lib/data/celestrak/types';
 import { getStkStatus } from '@/lib/stk/service';
+import { ensureDemoSeeded } from '@/lib/services';
 
 export interface AnalysisConfig {
   // Primary
@@ -257,13 +258,22 @@ async function runAnalysisAsync(analysisId: string, config: AnalysisConfig): Pro
     const now = new Date();
     const start = config.startTime ? new Date(config.startTime) : now;
     const end = new Date(start.getTime() + horizonHours * 3600 * 1000);
+    const isDemo = config.source === 'SENTINEL-DEMO';
+
+    if (isDemo) {
+      await ensureDemoSeeded();
+    }
 
     // Get primaries
     let primaries;
-    if (config.primaryId) {
-      primaries = await db.satellite.findMany({ where: { id: config.primaryId } });
+    if (config.primaryId && !(isDemo && config.primaryId === '25544')) {
+      const primaryWhere: any = { id: config.primaryId };
+      if (isDemo) primaryWhere.source = 'SENTINEL-DEMO';
+      primaries = await db.satellite.findMany({ where: primaryWhere });
     } else {
-      primaries = await db.satellite.findMany({ where: { isProtected: true } });
+      primaries = await db.satellite.findMany({
+        where: isDemo ? { isProtected: true, source: 'SENTINEL-DEMO' } : { isProtected: true },
+      });
     }
     if (primaries.length === 0) {
       // If no protected sats, mark ISS as protected and use it

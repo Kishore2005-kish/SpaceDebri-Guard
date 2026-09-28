@@ -46,11 +46,11 @@ const STEPS = [
 
 export function AnalyzeView() {
   const { toast } = useToast();
-  const { setView, openConjunction } = useUI();
+  const { setView, openConjunction, selectedSatellite } = useUI();
   const [presets, setPresets] = useState<Preset[]>([]);
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState({
-    primaryId: '25544',
+    primaryId: selectedSatellite?.catalogId ?? '25544',
     source: 'CelesTrak',
     horizonHours: 24,
     thresholdKm: 5,
@@ -64,6 +64,12 @@ export function AnalyzeView() {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
   const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    if (selectedSatellite) {
+      setConfig(c => ({ ...c, primaryId: selectedSatellite.catalogId }));
+    }
+  }, [selectedSatellite]);
 
   useEffect(() => {
     fetch('/api/analysis').then(r => r.json()).then(j => setPresets(j.presets || []));
@@ -118,8 +124,28 @@ export function AnalyzeView() {
   const applyPreset = (key: string) => {
     const p = presets.find(p => p.key === key);
     if (!p) return;
-    setConfig(c => ({ ...c, ...p.config, primaryId: c.primaryId }));
+    setConfig(c => ({
+      ...c,
+      ...p.config,
+      primaryId: p.config.source === 'SENTINEL-DEMO'
+        ? 'ALL_PROTECTED'
+        : selectedSatellite?.catalogId ?? c.primaryId,
+    }));
     toast({ title: `Preset: ${p.name}`, description: p.description });
+  };
+
+  const updateSource = (source: string) => {
+    setConfig({
+      ...config,
+      source,
+      primaryId: source === 'SENTINEL-DEMO'
+        ? 'ALL_PROTECTED'
+        : config.primaryId === 'ALL_PROTECTED'
+          ? selectedSatellite?.catalogId ?? '25544'
+          : config.primaryId,
+      horizonHours: source === 'SENTINEL-DEMO' ? 168 : config.horizonHours,
+      thresholdKm: source === 'SENTINEL-DEMO' ? 25 : config.thresholdKm,
+    });
   };
 
   const runAnalysis = async () => {
@@ -292,7 +318,7 @@ export function AnalyzeView() {
           <div className="space-y-3">
             <div>
               <Label className="text-[10px] font-mono uppercase">Data Source</Label>
-              <Select value={config.source} onValueChange={v => setConfig({ ...config, source: v })}>
+              <Select value={config.source} onValueChange={updateSource}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="CelesTrak">● LIVE — Real CelesTrak data</SelectItem>

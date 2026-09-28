@@ -17,7 +17,7 @@ import { OrbitalObject } from '@/lib/data/celestrak/types';
 import { propagateSgp4, SGP4_VERSION, SGP4_FRAME } from '@/lib/orbital/sgp4';
 import { screen, DEFAULT_SCREENING_HORIZON_DAYS, DEFAULT_SCREENING_THRESHOLD_KM } from '@/lib/orbital/conjunction';
 import { relativeMotion } from '@/lib/orbital/propagator';
-import { StkScenarioConfig, StkConjunctionResult, TrajectoryPoint } from './types';
+import { StkScenarioConfig, StkConjunctionResult, TrajectoryPoint, StkSecondaryCandidate } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -113,7 +113,7 @@ export async function runSgp4Fallback(
     covarianceAvailable: false,
     collisionProbabilityAvailable: false,
     fallbackReason,
-    stkVersion: null,
+    stkVersion: undefined,
     stkScenarioId: `SENTINEL-${uuidv4().slice(0, 8)}`,
     stkAnalysisId: uuidv4(),
     stkResultTimestamp: new Date().toISOString(),
@@ -140,7 +140,7 @@ function generateTrajectory(obj: OrbitalObject, start: Date, end: Date, stepSec:
 }
 
 /** Convert a StkSecondaryCandidate to an OrbitalObject (for SGP4 propagation). */
-function toOrbitalObject(c: StkScenarioConfig['primary']): OrbitalObject {
+function toOrbitalObject(c: StkSecondaryCandidate): OrbitalObject {
   return {
     catalogId: c.catalogId,
     name: c.name,

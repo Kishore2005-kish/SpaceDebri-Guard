@@ -27,6 +27,7 @@ import {
   SimulationRun,
   SimulationStatus,
   StkSecondaryCandidate,
+  StkPrimary,
 } from '@/lib/stk/types';
 import { getStkStatus } from '@/lib/stk/service';
 import {
@@ -419,7 +420,7 @@ export async function getSimulationTrajectory(simulationId: string): Promise<{
 
 // --- helpers ---
 
-function toStkCandidate(sat: any, isPrimary: boolean): StkSecondaryCandidate {
+function toStkCandidate(sat: any, isPrimary: boolean): StkPrimary {
   return {
     catalogId: String(sat.id),
     name: sat.name,
@@ -433,6 +434,7 @@ function toStkCandidate(sat: any, isPrimary: boolean): StkSecondaryCandidate {
     meanAnomaly: sat.meanAnomaly,
     bstar: sat.bstar,
     source: sat.source,
+    isProtected: isPrimary,
   };
 }
 

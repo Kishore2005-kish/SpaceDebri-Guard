@@ -17,12 +17,25 @@ export const WeatherLiveView = () => {
     temperature: '120000',
     xray_flux: '0.00000012',
     proton_flux: '0.8',
+    proton_lag1: '0.7',
+    proton_lag2: '0.6',
+    proton_roll3: '0.7',
+    proton_roll7: '0.65',
+    xray_lag1: '0.00000010',
+    xray_lag2: '0.00000008',
+    xray_roll3: '0.00000010',
+    xray_roll7: '0.00000009',
     kp_index: '2.0',
-    bz: '1.0'
+    kp_lag1: '2.0',
+    kp_lag2: '1.7',
+    kp_roll3: '1.9',
+    bz: '1.0',
+    bz_lag1: '1.2'
   });
   const [manualPrediction, setManualPrediction] = React.useState<PredictionResult | null>(null);
   const [manualLoading, setManualLoading] = React.useState(false);
   const [manualError, setManualError] = React.useState('');
+  const [validationErrors, setValidationErrors] = React.useState<Partial<Record<keyof PredictionParams, string>>>({});
 
   // Helper to get status color classes
   const getStatusColor = (stat: string) => {
@@ -100,14 +113,101 @@ export const WeatherLiveView = () => {
     }
   };
 
+  const inputRanges: Partial<Record<keyof PredictionParams, { min: number; max: number; hint: string }>> = {
+    density: { min: 0, max: 200, hint: '0 to 200 p/cm3' },
+    speed: { min: 250, max: 1200, hint: '250 to 1200 km/s' },
+    temperature: { min: 1000, max: 5000000, hint: '1,000 to 5,000,000 K' },
+    xray_flux: { min: 1e-10, max: 1e-2, hint: '1e-10 to 1e-2 W/m2' },
+    proton_flux: { min: 0, max: 100000, hint: '0 to 100,000 pfu' },
+    proton_lag1: { min: 0, max: 100000, hint: '0 to 100,000 pfu' },
+    proton_lag2: { min: 0, max: 100000, hint: '0 to 100,000 pfu' },
+    proton_roll3: { min: 0, max: 100000, hint: '0 to 100,000 pfu' },
+    proton_roll7: { min: 0, max: 100000, hint: '0 to 100,000 pfu' },
+    xray_lag1: { min: 1e-10, max: 1e-2, hint: '1e-10 to 1e-2 W/m2' },
+    xray_lag2: { min: 1e-10, max: 1e-2, hint: '1e-10 to 1e-2 W/m2' },
+    xray_roll3: { min: 1e-10, max: 1e-2, hint: '1e-10 to 1e-2 W/m2' },
+    xray_roll7: { min: 1e-10, max: 1e-2, hint: '1e-10 to 1e-2 W/m2' },
+    kp_index: { min: 0, max: 9, hint: '0 to 9' },
+    kp_lag1: { min: 0, max: 9, hint: '0 to 9' },
+    kp_lag2: { min: 0, max: 9, hint: '0 to 9' },
+    kp_roll3: { min: 0, max: 9, hint: '0 to 9' },
+    bz: { min: -50, max: 50, hint: '-50 to 50 nT' },
+    bz_lag1: { min: -50, max: 50, hint: '-50 to 50 nT' }
+  };
+
+  const currentInputFields: Array<[keyof PredictionParams, string, string]> = [
+    ['density', 'Density', inputRanges.density?.hint || 'p/cm3'],
+    ['speed', 'Solar wind', inputRanges.speed?.hint || 'km/s'],
+    ['temperature', 'Temperature', inputRanges.temperature?.hint || 'K'],
+    ['xray_flux', 'X-ray flux', inputRanges.xray_flux?.hint || 'W/m2'],
+    ['proton_flux', 'Proton flux', inputRanges.proton_flux?.hint || 'pfu'],
+    ['kp_index', 'Kp index', inputRanges.kp_index?.hint || '0-9'],
+    ['bz', 'Bz field', inputRanges.bz?.hint || 'nT']
+  ];
+
+  const historyInputFields: Array<[keyof PredictionParams, string, string]> = [
+    ['proton_lag1', 'Proton yesterday', inputRanges.proton_lag1?.hint || 'pfu'],
+    ['proton_lag2', 'Proton 2 days ago', inputRanges.proton_lag2?.hint || 'pfu'],
+    ['proton_roll3', 'Proton 3-day avg', inputRanges.proton_roll3?.hint || 'pfu'],
+    ['proton_roll7', 'Proton 7-day avg', inputRanges.proton_roll7?.hint || 'pfu'],
+    ['xray_lag1', 'X-ray yesterday', inputRanges.xray_lag1?.hint || 'W/m2'],
+    ['xray_lag2', 'X-ray 2 days ago', inputRanges.xray_lag2?.hint || 'W/m2'],
+    ['xray_roll3', 'X-ray 3-day avg', inputRanges.xray_roll3?.hint || 'W/m2'],
+    ['xray_roll7', 'X-ray 7-day avg', inputRanges.xray_roll7?.hint || 'W/m2'],
+    ['kp_lag1', 'Kp yesterday', inputRanges.kp_lag1?.hint || '0-9'],
+    ['kp_lag2', 'Kp 2 days ago', inputRanges.kp_lag2?.hint || '0-9'],
+    ['kp_roll3', 'Kp 3-day avg', inputRanges.kp_roll3?.hint || '0-9'],
+    ['bz_lag1', 'Bz previous', inputRanges.bz_lag1?.hint || 'nT']
+  ];
+
   const handleManualWeatherChange = (field: keyof PredictionParams, value: string) => {
     setManualWeather((current) => ({ ...current, [field]: value }));
+    setValidationErrors((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateManualWeather = () => {
+    const errors: Partial<Record<keyof PredictionParams, string>> = {};
+
+    for (const field of [...currentInputFields, ...historyInputFields].map(([key]) => key)) {
+      const value = manualWeather[field];
+      const range = inputRanges[field];
+      const isRequired = currentInputFields.some(([key]) => key === field);
+
+      if (value === '' || value === undefined || value === null) {
+        if (isRequired) {
+          errors[field] = 'Required';
+        }
+        continue;
+      }
+
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) {
+        errors[field] = 'Enter a valid number';
+      } else if (range && (numericValue < range.min || numericValue > range.max)) {
+        errors[field] = `Use ${range.hint}`;
+      }
+    }
+
+    return errors;
   };
 
   const handleManualPrediction = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setManualLoading(true);
     setManualError('');
+
+    const errors = validateManualWeather();
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setManualPrediction(null);
+      setManualError('Fix the highlighted weather inputs before running the model.');
+      return;
+    }
+
+    setManualLoading(true);
 
     try {
       const response = await getPrediction(manualWeather);
@@ -362,32 +462,63 @@ export const WeatherLiveView = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-5">
           <form onSubmit={handleManualPrediction} className="bg-[#0F172A]/70 border border-slate-800 rounded-xl p-4 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
-              {[
-                ['density', 'Density', 'p/cm3'],
-                ['speed', 'Solar wind', 'km/s'],
-                ['temperature', 'Temperature', 'K'],
-                ['xray_flux', 'X-ray flux', 'W/m2'],
-                ['proton_flux', 'Proton flux', 'pfu'],
-                ['kp_index', 'Kp index', '0-9'],
-                ['bz', 'Bz field', 'nT']
-              ].map(([field, label, unit]) => (
-                <div key={field} className="space-y-2">
-                  <Label htmlFor={`manual-${field}`} className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">
-                    {label}
-                  </Label>
-                  <Input
-                    id={`manual-${field}`}
-                    type="number"
-                    step="any"
-                    value={manualWeather[field as keyof PredictionParams]}
-                    onChange={(event) => handleManualWeatherChange(field as keyof PredictionParams, event.target.value)}
-                    className="bg-slate-950 border-slate-800 text-slate-100 font-mono text-xs"
-                    required
-                  />
-                  <p className="text-[10px] text-slate-600 font-mono">{unit}</p>
+            <div className="space-y-5">
+              <div className="space-y-3">
+                <h3 className="text-[10px] text-cyan-400 font-mono uppercase tracking-widest">Current Reading</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {currentInputFields.map(([field, label, unit]) => (
+                    <div key={field} className="space-y-2">
+                      <Label htmlFor={`manual-${field}`} className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">
+                        {label}
+                      </Label>
+                      <Input
+                        id={`manual-${field}`}
+                        type="number"
+                        step="any"
+                        min={inputRanges[field]?.min}
+                        max={inputRanges[field]?.max}
+                        value={manualWeather[field]}
+                        onChange={(event) => handleManualWeatherChange(field, event.target.value)}
+                        className={`bg-slate-950 text-slate-100 font-mono text-xs ${
+                          validationErrors[field] ? 'border-rose-500 focus-visible:ring-rose-500' : 'border-slate-800'
+                        }`}
+                        required
+                      />
+                      <p className={`text-[10px] font-mono ${validationErrors[field] ? 'text-rose-300' : 'text-slate-600'}`}>
+                        {validationErrors[field] || unit}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <div className="space-y-3 border-t border-slate-800 pt-4">
+                <h3 className="text-[10px] text-cyan-400 font-mono uppercase tracking-widest">Recent History Features</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {historyInputFields.map(([field, label, unit]) => (
+                    <div key={field} className="space-y-2">
+                      <Label htmlFor={`manual-${field}`} className="text-[10px] text-slate-500 font-mono uppercase tracking-wider">
+                        {label}
+                      </Label>
+                      <Input
+                        id={`manual-${field}`}
+                        type="number"
+                        step="any"
+                        min={inputRanges[field]?.min}
+                        max={inputRanges[field]?.max}
+                        value={manualWeather[field]}
+                        onChange={(event) => handleManualWeatherChange(field, event.target.value)}
+                        className={`bg-slate-950 text-slate-100 font-mono text-xs ${
+                          validationErrors[field] ? 'border-rose-500 focus-visible:ring-rose-500' : 'border-slate-800'
+                        }`}
+                      />
+                      <p className={`text-[10px] font-mono ${validationErrors[field] ? 'text-rose-300' : 'text-slate-600'}`}>
+                        {validationErrors[field] || unit}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-800 pt-4">
@@ -423,6 +554,29 @@ export const WeatherLiveView = () => {
                 <p className="text-xs text-slate-300 leading-relaxed border-t border-slate-800 pt-3">
                   {manualPrediction.explanation}
                 </p>
+
+                {manualPrediction.class_probabilities && (
+                  <div className="space-y-2 border-t border-slate-800 pt-3">
+                    <h3 className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Class Probabilities</h3>
+                    {Object.entries(manualPrediction.class_probabilities).map(([label, probability]) => (
+                      <div key={label} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-slate-400">{label}</span>
+                          <span className="text-slate-200">{probability.toFixed(2)}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-900 border border-slate-800">
+                          <div
+                            className={`h-full rounded-full ${
+                              label === 'HIGH' ? 'bg-orange-500' :
+                              label === 'MEDIUM' ? 'bg-amber-500' : 'bg-emerald-500'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.max(0, probability))}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="space-y-2 border-t border-slate-800 pt-3">
                   <h3 className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">AI Suggestions</h3>

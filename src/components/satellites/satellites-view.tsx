@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { SatelliteDTO } from '@/lib/services';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +10,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Search, Filter, Satellite as SatIcon, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUI } from '@/lib/store';
 
 export function SatellitesView() {
+  const { selectSatellite, setView } = useUI();
+  const router = useRouter();
   const [all, setAll] = useState<SatelliteDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +145,17 @@ export function SatellitesView() {
               <div className="flex justify-between"><span>Source</span><span className="text-primary">{s.source}</span></div>
               <div className="flex justify-between"><span>Data age</span><span className="tnum text-amber-500">{((Date.now() - new Date(s.epoch).getTime()) / 3600000).toFixed(1)} h</span></div>
             </div>
+            <button
+              type="button"
+              className="mt-3 w-full rounded border border-primary/40 px-2 py-1.5 text-[10px] font-mono text-primary hover:bg-primary/10"
+              onClick={() => {
+                selectSatellite({ id: s.id, name: s.name });
+                setView('satellites');
+                router.push(`/satellites/${encodeURIComponent(s.id)}`);
+              }}
+            >
+              ANALYZE SATELLITE
+            </button>
           </Card>
           );
         })}

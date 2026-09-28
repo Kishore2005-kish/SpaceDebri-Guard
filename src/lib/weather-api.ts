@@ -8,8 +8,20 @@ export interface PredictionParams {
   temperature?: number | string;
   xray_flux?: number | string;
   proton_flux?: number | string;
+  proton_lag1?: number | string;
+  proton_lag2?: number | string;
+  proton_roll3?: number | string;
+  proton_roll7?: number | string;
+  xray_lag1?: number | string;
+  xray_lag2?: number | string;
+  xray_roll3?: number | string;
+  xray_roll7?: number | string;
   kp_index?: number | string;
+  kp_lag1?: number | string;
+  kp_lag2?: number | string;
+  kp_roll3?: number | string;
   bz?: number | string;
+  bz_lag1?: number | string;
 }
 
 export interface WeatherMetric {
@@ -76,6 +88,11 @@ export const getPrediction = async (params?: PredictionParams) => {
   }
 
   try {
+    const parseOptionalNumber = (value?: number | string) => {
+      const parsed = parseFloat(value as string);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    };
+
     const payload = {
       density: parseFloat(params.density as string) || 1.8,
       speed: parseFloat(params.speed as string) || 310.0,
@@ -85,6 +102,18 @@ export const getPrediction = async (params?: PredictionParams) => {
       proton_flux: parseFloat(params.proton_flux as string) || 0.22,
       kp_index: parseFloat(params.kp_index as string) || 2.0,
       bz: Number.isNaN(parseFloat(params.bz as string)) ? 1.0 : parseFloat(params.bz as string),
+      proton_lag1: parseOptionalNumber(params.proton_lag1),
+      proton_lag2: parseOptionalNumber(params.proton_lag2),
+      proton_roll3: parseOptionalNumber(params.proton_roll3),
+      proton_roll7: parseOptionalNumber(params.proton_roll7),
+      xray_lag1: parseOptionalNumber(params.xray_lag1),
+      xray_lag2: parseOptionalNumber(params.xray_lag2),
+      xray_roll3: parseOptionalNumber(params.xray_roll3),
+      xray_roll7: parseOptionalNumber(params.xray_roll7),
+      kp_lag1: parseOptionalNumber(params.kp_lag1),
+      kp_lag2: parseOptionalNumber(params.kp_lag2),
+      kp_roll3: parseOptionalNumber(params.kp_roll3),
+      bz_lag1: parseOptionalNumber(params.bz_lag1),
     };
     
     const response = await axios.post<PredictionResult>(`${API_BASE_URL}/predict`, payload);

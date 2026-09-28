@@ -30,6 +30,20 @@ TARGET_COLUMN = "target_next_day"
 def add_engineered_features(df):
     engineered = df.copy()
 
+    if "date" in engineered.columns:
+        engineered["date"] = pd.to_datetime(engineered["date"], errors="coerce")
+
+    engineered = engineered.sort_values("date").reset_index(drop=True)
+
+    original_dates = engineered["date"].copy()
+
+    engineered = (
+        engineered
+        .set_index("date")
+        .asfreq("D")
+        .reset_index()
+    )
+
     engineered["proton_lag1"] = engineered["proton_flux"].shift(1)
     engineered["proton_lag2"] = engineered["proton_flux"].shift(2)
     engineered["proton_roll3"] = engineered["proton_flux"].rolling(3).mean()
@@ -53,12 +67,29 @@ def add_engineered_features(df):
     engineered["xray_spike"] = (engineered["xray_flux"] > engineered["xray_roll3"] * 1.3).astype(int)
     engineered["proton_spike"] = (engineered["proton_flux"] > engineered["proton_roll3"] * 1.3).astype(int)
 
+    engineered = engineered[engineered["date"].isin(original_dates.dropna().unique())]
+    engineered = engineered.sort_values("date").reset_index(drop=True)
+
     return engineered
 
 
 def build_training_matrix(df):
     engineered = add_engineered_features(df)
+
+    engineered = engineered.sort_values("date").reset_index(drop=True)
+    original_dates = engineered["date"].copy()
+    engineered = (
+        engineered
+        .set_index("date")
+        .asfreq("D")
+        .reset_index()
+    )
+
     engineered[TARGET_COLUMN] = engineered["risk_level"].shift(-1)
+
+    engineered = engineered[engineered["date"].isin(original_dates.dropna().unique())]
+    engineered = engineered.sort_values("date").reset_index(drop=True)
+
     engineered = engineered.dropna(subset=FEATURE_COLUMNS + [TARGET_COLUMN])
 
     return engineered[FEATURE_COLUMNS], engineered[TARGET_COLUMN], engineered

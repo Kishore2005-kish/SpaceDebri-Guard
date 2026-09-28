@@ -1,0 +1,175 @@
+==============================================================================
+STEP 11 — BASELINE vs REBUILT COMPARISON REPORT
+==============================================================================
+Report generated (UTC): 2026-09-27T14:08:09.254885+00:00
+
+FILES UNDER COMPARISON
+  A) Baseline : /Users/kishorep/Desktop/Space-debri/Backend/data/baseline_backups/final_with_kp_sw.csv.BASELINE_20260927T135646Z.bak
+  B) Rebuilt  : /Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.REBUILT_STEP11.csv
+
+Baseline SHA-256          : 5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435
+Baseline SHA-256 expected : 5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435
+Baseline SHA-256 MATCH    : True
+
+Production final_with_kp_sw.csv SHA-256: 5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435
+Production matches baseline backup SHA?  : True
+
+
+==============================================================================
+SECTION A — BASIC STATISTICS
+==============================================================================
+  [Baseline]
+    rows (data rows)     : 4,031
+    columns              : ['date', 'proton_flux', 'xray_flux', 'risk_level', 'kp_index', 'bz', 'sw_speed']  (7)
+    min date             : 2000-01-01
+    max date             : 2020-01-01
+    duplicate dates      : 0
+    null counts per col  : {'date': 0, 'proton_flux': 0, 'xray_flux': 0, 'risk_level': 0, 'kp_index': 0, 'bz': 0, 'sw_speed': 0}
+    rows per year        : {2000: 366, 2001: 365, 2002: 342, 2003: 287, 2012: 365, 2013: 364, 2014: 360, 2015: 362, 2016: 366, 2017: 348, 2018: 217, 2019: 288, 2020: 1}
+
+  [Rebuilt]
+    rows (data rows)     : 5,929
+    columns              : ['date', 'proton_flux', 'xray_flux', 'risk_level', 'kp_index', 'bz', 'sw_speed']  (7)
+    min date             : 2000-01-01
+    max date             : 2020-01-01
+    duplicate dates      : 0
+    null counts per col  : {'date': 0, 'proton_flux': 0, 'xray_flux': 0, 'risk_level': 0, 'kp_index': 0, 'bz': 0, 'sw_speed': 0}
+    rows per year        : {2000: 366, 2001: 365, 2002: 342, 2003: 287, 2004: 366, 2005: 357, 2006: 302, 2007: 98, 2008: 12, 2009: 33, 2010: 365, 2011: 365, 2012: 365, 2013: 364, 2014: 360, 2015: 362, 2016: 366, 2017: 348, 2018: 217, 2019: 288, 2020: 1}
+
+  [Delta] rows (Rebuilt - Baseline): +1,898
+
+==============================================================================
+SECTION B — COVERAGE (2000–2020)
+==============================================================================
+  Year    Baseline rows  Rebuilt rows   Delta   Baseline missing days   Rebuilt missing days
+  --------------------------------------------------------------------------------------------
+  2000              366           366      +0                       0                      0
+  2001              365           365      +0                       0                      0
+  2002              342           342      +0                      23                     23
+  2003              287           287      +0                      78                     78
+  2004                0           366    +366                     366                      0  <-- 2004-2011 TARGET
+  2005                0           357    +357                     365                      8  <-- 2004-2011 TARGET
+  2006                0           302    +302                     365                     63  <-- 2004-2011 TARGET
+  2007                0            98     +98                     365                    267  <-- 2004-2011 TARGET
+  2008                0            12     +12                     366                      0  <-- 2004-2011 TARGET
+  2009                0            33     +33                     365                    181  <-- 2004-2011 TARGET
+  2010                0           365    +365                     365                      0  <-- 2004-2011 TARGET
+  2011                0           365    +365                     365                      0  <-- 2004-2011 TARGET
+  2012              365           365      +0                       1                      1
+  2013              364           364      +0                       1                      1
+  2014              360           360      +0                       5                      5
+  2015              362           362      +0                       3                      3
+  2016              366           366      +0                       0                      0
+  2017              348           348      +0                      17                     17
+  2018              217           217      +0                     148                    148
+  2019              288           288      +0                      77                     77
+  2020                1             1      +0                       0                      0
+
+  2004-2011 SUBTOTAL:
+    Baseline target rows: 0
+    Rebuilt target rows : 1,898
+    Delta target rows   : +1,898
+    Baseline target missing calendar days: 2,922
+    Rebuilt target missing calendar days : 519
+
+  Longest gap [Baseline] : 2923 day(s)
+    Between 2003-12-31 and 2012-01-01 (inclusive endpoints; gap size = 2923 calendar days)
+
+  Longest gap [Rebuilt] : 423 day(s)
+    Between 2008-04-04 and 2009-06-01 (inclusive endpoints; gap size = 423 calendar days)
+
+==============================================================================
+SECTION C — RISK CLASS DISTRIBUTION
+Thresholds: High >= 1e-6  |  Medium >= 5e-7 and < 1e-6  |  Low < 5e-7
+==============================================================================
+  Class       Baseline N   Baseline %    Rebuilt N   Rebuilt %      ΔN
+  ------------------------------------------------------------------------
+  Low              2,437       60.46%        4,185      70.59%  +1,748
+  Medium           1,010       25.06%        1,138      19.19%    +128
+  High               584       14.49%          606      10.22%     +22
+  TOTAL            4,031      100.00%        5,929     100.00%  +1,898
+
+  Baseline 2004-2011 class distribution:
+  [Baseline 2004-2011]
+    Low     :      0 rows  ( 0.00%)
+    Medium  :      0 rows  ( 0.00%)
+    High    :      0 rows  ( 0.00%)
+    Total   :      0 rows
+
+  [Rebuilt 2004-2011]
+    Low     :  1,748 rows  (92.10%)
+    Medium  :    128 rows  ( 6.74%)
+    High    :     22 rows  ( 1.16%)
+    Total   :  1,898 rows
+
+
+==============================================================================
+SECTION D — VARIABLE COVERAGE (descriptive stats)
+==============================================================================
+  [proton_flux]
+    Baseline  : non_null= 4,031  missing=     0  min=8500.0  max=1000000000.0  mean=1945648.6727859091  median=13000.0  std=29180937.877096757
+    Rebuilt   : non_null= 5,929  missing=     0  min=8500.0  max=1000000000.0  mean=1470989.677854613  median=14000.0  std=24223695.948160104
+
+  [xray_flux]
+    Baseline  : non_null= 4,031  missing=     0  min=1e-08  max=2e-05  mean=5.610324981394194e-07  median=3.7e-07  std=8.421104029195907e-07
+    Rebuilt   : non_null= 5,929  missing=     0  min=1e-08  max=2e-05  mean=4.3864192949907237e-07  median=2.4e-07  std=7.288201531172135e-07
+
+  [kp_index]
+    Baseline  : non_null= 4,031  missing=     0  min=0.0  max=7.624999999999999  mean=1.927513613247333  median=1.75  std=1.128435186924208
+    Rebuilt   : non_null= 5,929  missing=     0  min=0.0  max=7.624999999999999  mean=1.8603050683083149  median=1.66675  std=1.1292098026689497
+
+  [bz]
+    Baseline  : non_null= 4,031  missing=     0  min=-24.2  max=999.9  mean=0.10434135450260483  median=-0.2  std=16.075387796581932
+    Rebuilt   : non_null= 5,929  missing=     0  min=-35.7  max=999.9  mean=0.04164277281160398  median=-0.2  std=13.350667218610605
+
+  [sw_speed]
+    Baseline  : non_null= 4,031  missing=     0  min=259.0  max=9999.0  mean=439.7161994542297  median=410.0  std=279.81743398212586
+    Rebuilt   : non_null= 5,929  missing=     0  min=252.0  max=9999.0  mean=441.6232079608703  median=410.0  std=296.00905681247474
+
+
+==============================================================================
+SECTION E — DIFFERENCE ANALYSIS (set-based on date)
+==============================================================================
+  Dates newly added (Rebuilt \ Baseline) : 1,898
+    First 10: ['2004-01-01', '2004-01-02', '2004-01-03', '2004-01-04', '2004-01-05', '2004-01-06', '2004-01-07', '2004-01-08', '2004-01-09', '2004-01-10']
+    Last 10 : ['2011-12-22', '2011-12-23', '2011-12-24', '2011-12-25', '2011-12-26', '2011-12-27', '2011-12-28', '2011-12-29', '2011-12-30', '2011-12-31']
+    Counts by year (added):
+      2004: 366
+      2005: 357
+      2006: 302
+      2007: 98
+      2008: 12
+      2009: 33
+      2010: 365
+      2011: 365
+
+  Dates removed (Baseline \ Rebuilt)    : 0
+
+  Common dates (intersection)           : 4,031
+
+  Common dates with any value change    : 0
+
+  Unexpected change check: pre-2004 and post-2011 common-date value changes:
+    # of pre-2004/post-2011 rows with value changes (should be 0): 0
+    ✅ No unexpected pre-2004/post-2011 value changes detected.
+
+==============================================================================
+SECTION F — INTEGRITY CHECKS
+==============================================================================
+  ✅ [Rebuilt duplicate dates == 0] PASS   duplicates found = 0
+  ✅ [Rebuilt dates within 2000-01-01..2020-01-01 (full raw source range)] PASS   min=2000-01-01, max=2020-01-01
+  ✅ [Rebuilt core records non-null / impossible (NaN-free)] PASS   null counts per core col: {'proton_flux': 0, 'xray_flux': 0, 'kp_index': 0, 'bz': 0, 'sw_speed': 0, 'risk_level': 0}
+  ✅ [Labels follow authoritative thresholds exactly] PASS   thresholds: High >= 1e-6  |  Medium >= 5e-7 and < 1e-6  |  Low < 5e-7; mismatches found = 0
+  ✅ [2004–2011 records actually present] PASS   Rebuilt rows for 2004-2011: 1,898
+  ✅ [proton_flux strictly positive (per rule >10 MeV, invalids/non-positive excluded)] PASS   
+  ✅ [xray_flux strictly positive (per rule non-positive excluded)] PASS   
+  ✅ [sw_speed strictly positive (physically valid >0 km/s)] PASS   
+  ✅ [Baseline backup SHA-256 unchanged vs Step 10 recorded value] PASS   baseline SHA = 5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435
+  ✅ [Production final_with_kp_sw.csv unchanged vs baseline backup] PASS   prod SHA=5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435  baseline SHA=5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435
+
+==============================================================================
+SECTION G — SHA-256 HASH OF REBUILT CSV
+==============================================================================
+  Rebuilt file       : /Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.REBUILT_STEP11.csv
+  Rebuilt size bytes : 323,310
+  Rebuilt SHA-256    : 494a44721524662912b29ea713d636eef82e16730c3d8889b98c39ca27071378

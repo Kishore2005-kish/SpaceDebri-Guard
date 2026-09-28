@@ -98,6 +98,28 @@ const STATUS_LABELS: Record<string, string> = {
   STK_UNAVAILABLE: 'STK unavailable — using SGP4 fallback',
 };
 
+function estimatePrototypeCollisionLikelihood(event: ConjunctionInfo, result?: SimResult | null) {
+  const missKm = result?.minimumRangeKm ?? event.minRange;
+  const relVel = result?.relativeVelocityKmPerSec ?? event.relVelocity;
+  const risk = Math.max(0, Math.min(100, event.riskScore)) / 100;
+  const confidence = Math.max(0, Math.min(100, event.confidenceScore)) / 100;
+
+  const missFactor = Math.exp(-Math.max(0, missKm) / 1.5);
+  const velocityFactor = Math.max(0.35, Math.min(1.25, relVel / 10));
+  const estimate = Math.min(0.35, missFactor * risk * confidence * velocityFactor * 0.08);
+
+  let band = 'VERY LOW';
+  if (estimate >= 0.05) band = 'ELEVATED';
+  else if (estimate >= 0.01) band = 'LOW-MODERATE';
+  else if (estimate >= 0.001) band = 'LOW';
+
+  return {
+    value: estimate,
+    percent: estimate * 100,
+    band,
+  };
+}
+
 export function SimulationView({ conjunctionId, onClose }: { conjunctionId: string; onClose: () => void }) {
   const { toast } = useToast();
   const [conjunction, setConjunction] = useState<ConjunctionInfo | null>(null);
@@ -192,6 +214,7 @@ export function SimulationView({ conjunctionId, onClose }: { conjunctionId: stri
     : '—';
 
   const isStkFallback = simResult?.engine === 'SENTINEL SGP4 (fallback)';
+  const prototypePc = conjunction ? estimatePrototypeCollisionLikelihood(conjunction, simResult) : null;
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur flex flex-col">
@@ -478,12 +501,40 @@ export function SimulationView({ conjunctionId, onClose }: { conjunctionId: stri
                 </>
               ) : (
                 <>
+                  <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">Professional Pc</div>
                   <div className="text-lg font-mono font-bold text-amber-500">UNAVAILABLE</div>
-                  <div className="text-[9px] font-mono text-muted-foreground mt-1">
-                    Reason: Covariance information is not available from the public GP dataset.
-                    <br /><br />Per NASA CARA: "TLE-derived analytic theory data does not provide the
-                    covariance needed for probabilistic collision assessment."
-                    <br /><br />Source: <a href="https://www.nasa.gov/cara/step-2-close-approach-risk-assessment/" className="text-primary hover:underline">NASA CARA</a>
+                  <div className="text-[9px] font-mono text-muted-foreground mt-1 border-b border-red-500/20 pb-3">
+                    Covariance is not available from public GP data, so operational Pc cannot be calculated.
+                  </div>
+
+                  {prototypePc && (
+                    <div className="pt-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-[9px] font-mono uppercase tracking-wider text-red-400">Prototype Estimate</div>
+                          <div className="text-3xl font-mono font-bold tnum text-red-500">
+                            {prototypePc.percent < 0.01 ? '<0.01' : prototypePc.percent.toFixed(2)}%
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="font-mono text-[9px] border-red-500/40 text-red-400">
+                          {prototypePc.band}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden border border-red-500/20">
+                        <div
+                          className="h-full rounded-full bg-red-500"
+                          style={{ width: `${Math.min(100, Math.max(2, prototypePc.percent * 10))}%` }}
+                        />
+                      </div>
+                      <div className="text-[9px] font-mono text-muted-foreground mt-2">
+                        Heuristic from miss distance, relative velocity, risk score, and confidence.
+                        Use for demo prioritization only, not operational collision avoidance.
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-[9px] font-mono text-muted-foreground mt-3">
+                    Source: <a href="https://www.nasa.gov/cara/step-2-close-approach-risk-assessment/" className="text-primary hover:underline">NASA CARA</a>
                   </div>
                 </>
               )}
@@ -525,6 +576,7 @@ export function SimulationView({ conjunctionId, onClose }: { conjunctionId: stri
             <br /><br />
             This visualization shows the PREDICTED close approach (conjunction), not a confirmed collision.
             Professional collision probability requires covariance data not present in the public GP dataset.
+            The prototype estimate is a heuristic demo signal, not an operational Pc.
           </div>
         </div>
       </div>

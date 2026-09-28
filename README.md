@@ -56,3 +56,17 @@ GET /api/system/status
 ```
 
 Returns: database health, CelesTrak status, SGP4 version, Cesium status, STK status, AI status, data counts.
+The project is running successfully.
+
+Open:
+
+cd "/Users/kishorep/Desktop/Space-debri"
+npm install
+npx prisma generate
+npx prisma db push --accept-data-loss
+npm run dev
+
+cd "/Users/kishorep/Desktop/Space-debri/Backend"
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn api:app --host 127.0.0.1 --port 8000 --reload

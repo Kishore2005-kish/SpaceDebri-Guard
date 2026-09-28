@@ -1,0 +1,22 @@
+{
+  "baseline_path": "/Users/kishorep/Desktop/Space-debri/Backend/data/baseline_backups/final_with_kp_sw.csv.BASELINE_20260927T135646Z.bak",
+  "baseline_rows": 4031,
+  "baseline_sha256": "5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435",
+  "baseline_sha256_matches_recorded": true,
+  "common_dates_value_changed_count": 0,
+  "dates_added_count": 1898,
+  "dates_removed_count": 0,
+  "delta_rows": 1898,
+  "label_mismatches_count": 0,
+  "labels_follow_thresholds": true,
+  "out_of_range_dates_value_changed_count": 0,
+  "production_vs_baseline_sha_match": true,
+  "rebuilt_duplicate_dates_count": 0,
+  "rebuilt_max_date": "2020-01-01",
+  "rebuilt_min_date": "2000-01-01",
+  "rebuilt_path": "/Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.REBUILT_STEP11.csv",
+  "rebuilt_rows": 5929,
+  "rebuilt_sha256": "494a44721524662912b29ea713d636eef82e16730c3d8889b98c39ca27071378",
+  "rebuilt_size_bytes": 323310,
+  "report_generated_utc": "2026-09-27T14:08:09.523141+00:00"
+}

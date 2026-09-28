@@ -191,7 +191,7 @@ export function AnalysisPanel({ onAnalysisComplete }: { onAnalysisComplete?: () 
             <div>Max secondaries: {presets.find(p => p.key === selectedPreset)?.config.maxSecondaries ?? 100}</div>
           </div>
           <button
-            onClick={() => useUI.getState().setView('analysis')}
+            onClick={() => useUI.getState().setView('analyze')}
             className="text-primary hover:underline mt-1 text-[10px]"
           >
             → Full configuration wizard (all parameters)

@@ -1,0 +1,37 @@
+{
+  "backup_absolute_path": "/Users/kishorep/Desktop/Space-debri/Backend/data/baseline_backups/final_with_kp_sw.csv.BASELINE_20260927T135646Z.bak",
+  "backup_created_at_utc": "2026-09-27T13:56:46.629352+00:00",
+  "backup_filename": "final_with_kp_sw.csv.BASELINE_20260927T135646Z.bak",
+  "column_names": [
+    "date",
+    "proton_flux",
+    "xray_flux",
+    "risk_level",
+    "kp_index",
+    "bz",
+    "sw_speed"
+  ],
+  "dataframe_dtypes": {
+    "bz": "float64",
+    "date": "datetime64[ns]",
+    "kp_index": "float64",
+    "proton_flux": "float64",
+    "risk_level": "object",
+    "sw_speed": "float64",
+    "xray_flux": "float64"
+  },
+  "file_size_bytes": 220083,
+  "maximum_date": "2020-01-01",
+  "minimum_date": "2000-01-01",
+  "original_absolute_path": "/Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.csv",
+  "original_filename": "final_with_kp_sw.csv",
+  "row_count": 4031,
+  "sha256_backup": "5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435",
+  "sha256_match": true,
+  "sha256_original": "5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435",
+  "verification": {
+    "backup_file_size_bytes": 220083,
+    "hashes_equal": true,
+    "sizes_equal": true
+  }
+}

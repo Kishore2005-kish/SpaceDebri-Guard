@@ -31,7 +31,10 @@
 
 import SGP4 from 'sgp4';
 import { OrbitalObject } from '@/lib/data/celestrak/types';
-import { PropagatedState, CartesianState } from './elements';
+import { CartesianState } from './elements';
+import type { PropagatedState } from './propagator';
+
+export type { PropagatedState } from './propagator';
 
 const TWO_PI = Math.PI * 2;
 const DEG2RAD = Math.PI / 180;

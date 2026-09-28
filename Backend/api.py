@@ -232,6 +232,40 @@ def predict_from_features(features):
     return normalize_level(predicted_level), confidence, class_probabilities
 
 
+def override_manual_features(features, feature_row, data):
+    enriched = features.copy()
+    enriched_row = feature_row.copy()
+
+    for column in FEATURE_COLUMNS:
+        if column in data and data[column] is not None:
+            enriched.at[enriched.index[0], column] = float(data[column])
+            enriched_row[column] = float(data[column])
+
+    if "xray_lag1" in data and "xray_lag2" in data:
+        enriched.at[enriched.index[0], "xray_trend"] = float(data["xray_lag1"]) - float(data["xray_lag2"])
+        enriched_row["xray_trend"] = float(data["xray_lag1"]) - float(data["xray_lag2"])
+
+    if "proton_lag1" in data and "proton_lag2" in data:
+        enriched.at[enriched.index[0], "proton_trend"] = float(data["proton_lag1"]) - float(data["proton_lag2"])
+        enriched_row["proton_trend"] = float(data["proton_lag1"]) - float(data["proton_lag2"])
+
+    if "kp_lag1" in data and "kp_lag2" in data:
+        enriched.at[enriched.index[0], "kp_trend"] = float(data["kp_lag1"]) - float(data["kp_lag2"])
+        enriched_row["kp_trend"] = float(data["kp_lag1"]) - float(data["kp_lag2"])
+
+    if "xray_flux" in data and "xray_roll3" in data:
+        spike = int(float(data["xray_flux"]) > float(data["xray_roll3"]) * 1.3)
+        enriched.at[enriched.index[0], "xray_spike"] = spike
+        enriched_row["xray_spike"] = spike
+
+    if "proton_flux" in data and "proton_roll3" in data:
+        spike = int(float(data["proton_flux"]) > float(data["proton_roll3"]) * 1.3)
+        enriched.at[enriched.index[0], "proton_spike"] = spike
+        enriched_row["proton_spike"] = spike
+
+    return enriched[FEATURE_COLUMNS], enriched_row
+
+
 def build_live_prediction():
     reading = latest_live_reading()
     live_df = preprocess_space_weather_frame(live_reading_to_frame(reading))
@@ -357,6 +391,7 @@ def alerts():
 def predict(data: dict):
     live_df = preprocess_space_weather_frame(live_reading_to_frame(data))
     features, feature_row = build_inference_matrix(TRAINING_HISTORY, live_df)
+    features, feature_row = override_manual_features(features, feature_row, data)
     risk_level, confidence, class_probabilities = predict_from_features(features)
 
     return {

@@ -1,0 +1,1142 @@
+{
+  "generated_utc": "2026-09-27T14:17:57.722921+00:00",
+  "paths": {
+    "baseline_csv": "/Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.csv",
+    "rebuilt_csv": "/Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.REBUILT_STEP11.csv"
+  },
+  "model_configuration": {
+    "model": "RandomForestClassifier",
+    "n_estimators": 500,
+    "random_state": 42,
+    "class_weight": {
+      "Low": 1,
+      "Medium": 3,
+      "High": 10
+    }
+  },
+  "feature_columns": [
+    "proton_flux",
+    "proton_lag1",
+    "proton_lag2",
+    "proton_roll3",
+    "proton_roll7",
+    "proton_trend",
+    "proton_spike",
+    "xray_lag1",
+    "xray_lag2",
+    "xray_roll3",
+    "xray_roll7",
+    "xray_trend",
+    "xray_spike",
+    "kp_index",
+    "kp_lag1",
+    "kp_lag2",
+    "kp_roll3",
+    "kp_trend",
+    "bz",
+    "bz_lag1"
+  ],
+  "target_column": "target_next_day",
+  "usable_ml_rows": {
+    "baseline": 3788,
+    "rebuilt": 5577
+  },
+  "chronological": {
+    "baseline": {
+      "dataset": "baseline",
+      "train_n": 2717,
+      "test_n": 1071,
+      "train_class_distribution": {
+        "total": 2717,
+        "counts": {
+          "Low": 1186,
+          "Medium": 970,
+          "High": 561
+        },
+        "percentages": {
+          "Low": 43.6511,
+          "Medium": 35.7011,
+          "High": 20.6478
+        }
+      },
+      "test_class_distribution": {
+        "total": 1071,
+        "counts": {
+          "Low": 1058,
+          "Medium": 8,
+          "High": 5
+        },
+        "percentages": {
+          "Low": 98.7862,
+          "Medium": 0.747,
+          "High": 0.4669
+        }
+      },
+      "metrics": {
+        "accuracy": 0.9859943977591037,
+        "macro_f1": 0.4423994546693933,
+        "weighted_f1": 0.9842911943236736,
+        "per_class": {
+          "Low": {
+            "precision": 0.9924599434495759,
+            "recall": 0.995274102079395,
+            "f1": 0.9938650306748467
+          },
+          "Medium": {
+            "precision": 0.3,
+            "recall": 0.375,
+            "f1": 0.3333333333333333
+          },
+          "High": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            1053,
+            5,
+            0
+          ],
+          [
+            5,
+            3,
+            0
+          ],
+          [
+            3,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "Low",
+          "Medium",
+          "High"
+        ]
+      }
+    },
+    "rebuilt": {
+      "dataset": "rebuilt",
+      "train_n": 4506,
+      "test_n": 1071,
+      "train_class_distribution": {
+        "total": 4506,
+        "counts": {
+          "Low": 2824,
+          "Medium": 1099,
+          "High": 583
+        },
+        "percentages": {
+          "Low": 62.672,
+          "Medium": 24.3897,
+          "High": 12.9383
+        }
+      },
+      "test_class_distribution": {
+        "total": 1071,
+        "counts": {
+          "Low": 1058,
+          "Medium": 8,
+          "High": 5
+        },
+        "percentages": {
+          "Low": 98.7862,
+          "Medium": 0.747,
+          "High": 0.4669
+        }
+      },
+      "metrics": {
+        "accuracy": 0.9859943977591037,
+        "macro_f1": 0.4100343299188482,
+        "weighted_f1": 0.984491260161543,
+        "per_class": {
+          "Low": {
+            "precision": 0.9934024505183789,
+            "recall": 0.996219281663516,
+            "f1": 0.9948088721094857
+          },
+          "Medium": {
+            "precision": 0.2222222222222222,
+            "recall": 0.25,
+            "f1": 0.23529411764705882
+          },
+          "High": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            1054,
+            4,
+            0
+          ],
+          [
+            5,
+            2,
+            1
+          ],
+          [
+            2,
+            3,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "Low",
+          "Medium",
+          "High"
+        ]
+      }
+    }
+  },
+  "chronological_comparison_table": [
+    {
+      "metric": "train_rows",
+      "baseline": 2717,
+      "rebuilt": 4506,
+      "delta": 1789
+    },
+    {
+      "metric": "test_rows",
+      "baseline": 1071,
+      "rebuilt": 1071,
+      "delta": 0
+    },
+    {
+      "metric": "accuracy",
+      "baseline": 0.9859943977591037,
+      "rebuilt": 0.9859943977591037,
+      "delta": 0.0
+    },
+    {
+      "metric": "macro_f1",
+      "baseline": 0.4423994546693933,
+      "rebuilt": 0.4100343299188482,
+      "delta": -0.03236512475054509
+    },
+    {
+      "metric": "weighted_f1",
+      "baseline": 0.9842911943236736,
+      "rebuilt": 0.984491260161543,
+      "delta": 0.0002000658378693565
+    },
+    {
+      "metric": "Low_precision",
+      "baseline": 0.9924599434495759,
+      "rebuilt": 0.9934024505183789,
+      "delta": 0.0009425070688030557
+    },
+    {
+      "metric": "Low_recall",
+      "baseline": 0.995274102079395,
+      "rebuilt": 0.996219281663516,
+      "delta": 0.000945179584120992
+    },
+    {
+      "metric": "Low_f1",
+      "baseline": 0.9938650306748467,
+      "rebuilt": 0.9948088721094857,
+      "delta": 0.0009438414346389923
+    },
+    {
+      "metric": "Medium_precision",
+      "baseline": 0.3,
+      "rebuilt": 0.2222222222222222,
+      "delta": -0.07777777777777778
+    },
+    {
+      "metric": "Medium_recall",
+      "baseline": 0.375,
+      "rebuilt": 0.25,
+      "delta": -0.125
+    },
+    {
+      "metric": "Medium_f1",
+      "baseline": 0.3333333333333333,
+      "rebuilt": 0.23529411764705882,
+      "delta": -0.0980392156862745
+    },
+    {
+      "metric": "High_precision",
+      "baseline": 0.0,
+      "rebuilt": 0.0,
+      "delta": 0.0
+    },
+    {
+      "metric": "High_recall",
+      "baseline": 0.0,
+      "rebuilt": 0.0,
+      "delta": 0.0
+    },
+    {
+      "metric": "High_f1",
+      "baseline": 0.0,
+      "rebuilt": 0.0,
+      "delta": 0.0
+    }
+  ],
+  "walk_forward": {
+    "baseline": [
+      {
+        "window": "Exp2",
+        "dataset": "baseline",
+        "train_end": "2003-12-31",
+        "test_period": "2012-01-01 to 2013-12-31",
+        "train_n": 1332,
+        "test_n": 709,
+        "train_class_distribution": {
+          "total": 1332,
+          "counts": {
+            "Low": 381,
+            "Medium": 493,
+            "High": 458
+          },
+          "percentages": {
+            "Low": 28.6036,
+            "Medium": 37.012,
+            "High": 34.3844
+          }
+        },
+        "test_class_distribution": {
+          "total": 709,
+          "counts": {
+            "Low": 485,
+            "Medium": 194,
+            "High": 30
+          },
+          "percentages": {
+            "Low": 68.4062,
+            "Medium": 27.3625,
+            "High": 4.2313
+          }
+        },
+        "metrics": {
+          "accuracy": 0.7926657263751763,
+          "macro_f1": 0.6250221989352425,
+          "weighted_f1": 0.7902718481610981,
+          "per_class": {
+            "Low": {
+              "precision": 0.8794178794178794,
+              "recall": 0.8721649484536083,
+              "f1": 0.8757763975155279
+            },
+            "Medium": {
+              "precision": 0.6150234741784038,
+              "recall": 0.6752577319587629,
+              "f1": 0.6437346437346437
+            },
+            "High": {
+              "precision": 0.5333333333333333,
+              "recall": 0.26666666666666666,
+              "f1": 0.35555555555555557
+            }
+          },
+          "confusion_matrix": [
+            [
+              423,
+              62,
+              0
+            ],
+            [
+              56,
+              131,
+              7
+            ],
+            [
+              2,
+              20,
+              8
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      },
+      {
+        "window": "Exp3",
+        "dataset": "baseline",
+        "train_end": "2013-12-31",
+        "test_period": "2014-01-01 to 2015-12-31",
+        "train_n": 2041,
+        "test_n": 676,
+        "train_class_distribution": {
+          "total": 2041,
+          "counts": {
+            "Low": 866,
+            "Medium": 687,
+            "High": 488
+          },
+          "percentages": {
+            "Low": 42.4302,
+            "Medium": 33.66,
+            "High": 23.9098
+          }
+        },
+        "test_class_distribution": {
+          "total": 676,
+          "counts": {
+            "Low": 320,
+            "Medium": 283,
+            "High": 73
+          },
+          "percentages": {
+            "Low": 47.3373,
+            "Medium": 41.8639,
+            "High": 10.7988
+          }
+        },
+        "metrics": {
+          "accuracy": 0.7692307692307693,
+          "macro_f1": 0.7213039505109015,
+          "weighted_f1": 0.7673014881042587,
+          "per_class": {
+            "Low": {
+              "precision": 0.8370607028753994,
+              "recall": 0.81875,
+              "f1": 0.8278041074249605
+            },
+            "Medium": {
+              "precision": 0.7106109324758842,
+              "recall": 0.7809187279151943,
+              "f1": 0.7441077441077442
+            },
+            "High": {
+              "precision": 0.7115384615384616,
+              "recall": 0.5068493150684932,
+              "f1": 0.592
+            }
+          },
+          "confusion_matrix": [
+            [
+              262,
+              56,
+              2
+            ],
+            [
+              49,
+              221,
+              13
+            ],
+            [
+              2,
+              34,
+              37
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      },
+      {
+        "window": "Exp4",
+        "dataset": "baseline",
+        "train_end": "2015-12-31",
+        "test_period": "2016-01-01 to 2017-12-31",
+        "train_n": 2717,
+        "test_n": 673,
+        "train_class_distribution": {
+          "total": 2717,
+          "counts": {
+            "Low": 1186,
+            "Medium": 970,
+            "High": 561
+          },
+          "percentages": {
+            "Low": 43.6511,
+            "Medium": 35.7011,
+            "High": 20.6478
+          }
+        },
+        "test_class_distribution": {
+          "total": 673,
+          "counts": {
+            "Low": 660,
+            "Medium": 8,
+            "High": 5
+          },
+          "percentages": {
+            "Low": 98.0684,
+            "Medium": 1.1887,
+            "High": 0.7429
+          }
+        },
+        "metrics": {
+          "accuracy": 0.9777117384843982,
+          "macro_f1": 0.4411690602166793,
+          "weighted_f1": 0.975009518418561,
+          "per_class": {
+            "Low": {
+              "precision": 0.9879336349924586,
+              "recall": 0.9924242424242424,
+              "f1": 0.9901738473167044
+            },
+            "Medium": {
+              "precision": 0.3,
+              "recall": 0.375,
+              "f1": 0.3333333333333333
+            },
+            "High": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              655,
+              5,
+              0
+            ],
+            [
+              5,
+              3,
+              0
+            ],
+            [
+              3,
+              2,
+              0
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      },
+      {
+        "window": "Exp5",
+        "dataset": "baseline",
+        "train_end": "2017-12-31",
+        "test_period": "2018-01-01 to 2019-12-31",
+        "train_n": 3390,
+        "test_n": 398,
+        "train_class_distribution": {
+          "total": 3390,
+          "counts": {
+            "Low": 1846,
+            "Medium": 978,
+            "High": 566
+          },
+          "percentages": {
+            "Low": 54.4543,
+            "Medium": 28.8496,
+            "High": 16.6962
+          }
+        },
+        "test_class_distribution": {
+          "total": 398,
+          "counts": {
+            "Low": 398,
+            "Medium": 0,
+            "High": 0
+          },
+          "percentages": {
+            "Low": 100.0,
+            "Medium": 0.0,
+            "High": 0.0
+          }
+        },
+        "metrics": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "weighted_f1": 1.0,
+          "per_class": {
+            "Low": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "Medium": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "High": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              398,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      }
+    ],
+    "rebuilt": [
+      {
+        "window": "Exp2",
+        "dataset": "rebuilt",
+        "train_end": "2003-12-31",
+        "test_period": "2012-01-01 to 2013-12-31",
+        "train_n": 1333,
+        "test_n": 715,
+        "train_class_distribution": {
+          "total": 1333,
+          "counts": {
+            "Low": 381,
+            "Medium": 494,
+            "High": 458
+          },
+          "percentages": {
+            "Low": 28.5821,
+            "Medium": 37.0593,
+            "High": 34.3586
+          }
+        },
+        "test_class_distribution": {
+          "total": 715,
+          "counts": {
+            "Low": 490,
+            "Medium": 195,
+            "High": 30
+          },
+          "percentages": {
+            "Low": 68.5315,
+            "Medium": 27.2727,
+            "High": 4.1958
+          }
+        },
+        "metrics": {
+          "accuracy": 0.7916083916083916,
+          "macro_f1": 0.6147975061492378,
+          "weighted_f1": 0.7887900589914885,
+          "per_class": {
+            "Low": {
+              "precision": 0.8801652892561983,
+              "recall": 0.8693877551020408,
+              "f1": 0.8747433264887063
+            },
+            "Medium": {
+              "precision": 0.6100917431192661,
+              "recall": 0.6820512820512821,
+              "f1": 0.6440677966101694
+            },
+            "High": {
+              "precision": 0.5384615384615384,
+              "recall": 0.23333333333333334,
+              "f1": 0.32558139534883723
+            }
+          },
+          "confusion_matrix": [
+            [
+              426,
+              64,
+              0
+            ],
+            [
+              56,
+              133,
+              6
+            ],
+            [
+              2,
+              21,
+              7
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      },
+      {
+        "window": "Exp3",
+        "dataset": "rebuilt",
+        "train_end": "2013-12-31",
+        "test_period": "2014-01-01 to 2015-12-31",
+        "train_n": 3830,
+        "test_n": 676,
+        "train_class_distribution": {
+          "total": 3830,
+          "counts": {
+            "Low": 2504,
+            "Medium": 816,
+            "High": 510
+          },
+          "percentages": {
+            "Low": 65.3786,
+            "Medium": 21.3055,
+            "High": 13.3159
+          }
+        },
+        "test_class_distribution": {
+          "total": 676,
+          "counts": {
+            "Low": 320,
+            "Medium": 283,
+            "High": 73
+          },
+          "percentages": {
+            "Low": 47.3373,
+            "Medium": 41.8639,
+            "High": 10.7988
+          }
+        },
+        "metrics": {
+          "accuracy": 0.772189349112426,
+          "macro_f1": 0.7244193028491969,
+          "weighted_f1": 0.7698906576772103,
+          "per_class": {
+            "Low": {
+              "precision": 0.8333333333333334,
+              "recall": 0.828125,
+              "f1": 0.8307210031347962
+            },
+            "Medium": {
+              "precision": 0.7166123778501629,
+              "recall": 0.7773851590106007,
+              "f1": 0.7457627118644068
+            },
+            "High": {
+              "precision": 0.7254901960784313,
+              "recall": 0.5068493150684932,
+              "f1": 0.5967741935483871
+            }
+          },
+          "confusion_matrix": [
+            [
+              265,
+              53,
+              2
+            ],
+            [
+              51,
+              220,
+              12
+            ],
+            [
+              2,
+              34,
+              37
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      },
+      {
+        "window": "Exp4",
+        "dataset": "rebuilt",
+        "train_end": "2015-12-31",
+        "test_period": "2016-01-01 to 2017-12-31",
+        "train_n": 4506,
+        "test_n": 673,
+        "train_class_distribution": {
+          "total": 4506,
+          "counts": {
+            "Low": 2824,
+            "Medium": 1099,
+            "High": 583
+          },
+          "percentages": {
+            "Low": 62.672,
+            "Medium": 24.3897,
+            "High": 12.9383
+          }
+        },
+        "test_class_distribution": {
+          "total": 673,
+          "counts": {
+            "Low": 660,
+            "Medium": 8,
+            "High": 5
+          },
+          "percentages": {
+            "Low": 98.0684,
+            "Medium": 1.1887,
+            "High": 0.7429
+          }
+        },
+        "metrics": {
+          "accuracy": 0.9777117384843982,
+          "macro_f1": 0.4089932269203978,
+          "weighted_f1": 0.9753266338729647,
+          "per_class": {
+            "Low": {
+              "precision": 0.9894419306184012,
+              "recall": 0.9939393939393939,
+              "f1": 0.9916855631141346
+            },
+            "Medium": {
+              "precision": 0.2222222222222222,
+              "recall": 0.25,
+              "f1": 0.23529411764705882
+            },
+            "High": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              656,
+              4,
+              0
+            ],
+            [
+              5,
+              2,
+              1
+            ],
+            [
+              2,
+              3,
+              0
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      },
+      {
+        "window": "Exp5",
+        "dataset": "rebuilt",
+        "train_end": "2017-12-31",
+        "test_period": "2018-01-01 to 2019-12-31",
+        "train_n": 5179,
+        "test_n": 398,
+        "train_class_distribution": {
+          "total": 5179,
+          "counts": {
+            "Low": 3484,
+            "Medium": 1107,
+            "High": 588
+          },
+          "percentages": {
+            "Low": 67.2717,
+            "Medium": 21.3748,
+            "High": 11.3535
+          }
+        },
+        "test_class_distribution": {
+          "total": 398,
+          "counts": {
+            "Low": 398,
+            "Medium": 0,
+            "High": 0
+          },
+          "percentages": {
+            "Low": 100.0,
+            "Medium": 0.0,
+            "High": 0.0
+          }
+        },
+        "metrics": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "weighted_f1": 1.0,
+          "per_class": {
+            "Low": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0
+            },
+            "Medium": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            },
+            "High": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0
+            }
+          },
+          "confusion_matrix": [
+            [
+              398,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ]
+        }
+      }
+    ]
+  },
+  "class_balance_analysis": {
+    "baseline_matrix": {
+      "Low": 2244,
+      "Medium": 978,
+      "High": 566
+    },
+    "rebuilt_matrix": {
+      "Low": 3882,
+      "Medium": 1107,
+      "High": 588
+    },
+    "note": "Imbalance not solved \u2014 rebuilt adds disproportionately Low labels.",
+    "accuracy_macro_f1_interpretation": "Higher accuracy on 2016\u20132019 often tracks predicting Low (majority). Macro F1 weights classes equally, so weak Medium/High performance still dominates macro score even when accuracy rises."
+  },
+  "sensitivity_chronological": {
+    "rebuilt_all": {
+      "dataset": "rebuilt_all",
+      "train_n": 4506,
+      "test_n": 1071,
+      "train_class_distribution": {
+        "total": 4506,
+        "counts": {
+          "Low": 2824,
+          "Medium": 1099,
+          "High": 583
+        },
+        "percentages": {
+          "Low": 62.672,
+          "Medium": 24.3897,
+          "High": 12.9383
+        }
+      },
+      "test_class_distribution": {
+        "total": 1071,
+        "counts": {
+          "Low": 1058,
+          "Medium": 8,
+          "High": 5
+        },
+        "percentages": {
+          "Low": 98.7862,
+          "Medium": 0.747,
+          "High": 0.4669
+        }
+      },
+      "metrics": {
+        "accuracy": 0.9859943977591037,
+        "macro_f1": 0.4100343299188482,
+        "weighted_f1": 0.984491260161543,
+        "per_class": {
+          "Low": {
+            "precision": 0.9934024505183789,
+            "recall": 0.996219281663516,
+            "f1": 0.9948088721094857
+          },
+          "Medium": {
+            "precision": 0.2222222222222222,
+            "recall": 0.25,
+            "f1": 0.23529411764705882
+          },
+          "High": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            1054,
+            4,
+            0
+          ],
+          [
+            5,
+            2,
+            1
+          ],
+          [
+            2,
+            3,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "Low",
+          "Medium",
+          "High"
+        ]
+      }
+    },
+    "rebuilt_no_2007_2009": {
+      "dataset": "rebuilt_excl_2007_2009",
+      "train_n": 4423,
+      "test_n": 1071,
+      "train_class_distribution": {
+        "total": 4423,
+        "counts": {
+          "Low": 2741,
+          "Medium": 1099,
+          "High": 583
+        },
+        "percentages": {
+          "Low": 61.9715,
+          "Medium": 24.8474,
+          "High": 13.1811
+        }
+      },
+      "test_class_distribution": {
+        "total": 1071,
+        "counts": {
+          "Low": 1058,
+          "Medium": 8,
+          "High": 5
+        },
+        "percentages": {
+          "Low": 98.7862,
+          "Medium": 0.747,
+          "High": 0.4669
+        }
+      },
+      "metrics": {
+        "accuracy": 0.9850606909430439,
+        "macro_f1": 0.40971971610730185,
+        "weighted_f1": 0.9835588752522542,
+        "per_class": {
+          "Low": {
+            "precision": 0.9924599434495759,
+            "recall": 0.995274102079395,
+            "f1": 0.9938650306748467
+          },
+          "Medium": {
+            "precision": 0.2222222222222222,
+            "recall": 0.25,
+            "f1": 0.23529411764705882
+          },
+          "High": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            1053,
+            5,
+            0
+          ],
+          [
+            5,
+            2,
+            1
+          ],
+          [
+            3,
+            2,
+            0
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "Low",
+          "Medium",
+          "High"
+        ]
+      }
+    },
+    "excluded_years": [
+      2007,
+      2008,
+      2009
+    ]
+  },
+  "prior_artifacts_note": "See archived evaluation_walk_forward.json; Step 13 re-runs with current FE on both datasets.",
+  "interpretation": {
+    "factual_answers": [
+      {
+        "q": "1. Did rebuilt increase usable ML examples?",
+        "a": "Yes: baseline matrix n=3788, rebuilt n=5577 (+1789)."
+      },
+      {
+        "q": "2. Did temporal class distributions change?",
+        "a": "Full-matrix Low/Med/High pct shifted (baseline 59.2397% / 25.8184% / 14.9419% vs rebuilt 69.6073% / 19.8494% / 10.5433%). Chronological train set grew 2717 \u2192 4506 with more Low-weight years."
+      },
+      {
+        "q": "3. Did chronological performance metrics change?",
+        "a": "Accuracy 0.9860 \u2192 0.9860; macro F1 0.4424 \u2192 0.4100; weighted F1 0.9843 \u2192 0.9845."
+      },
+      {
+        "q": "4. Did High recall change?",
+        "a": "High recall 0.0000 \u2192 0.0000 on 2016\u20132019 holdout."
+      },
+      {
+        "q": "5. Did walk-forward performance change?",
+        "a": "See walk_forward section \u2014 largest train-set deltas on Exp3+ where 2004\u20132011 enters training."
+      },
+      {
+        "q": "6. Causes: data vs class distribution?",
+        "a": "Both: additional 2004\u20132011 rows change training composition (especially Low share); test windows 2016\u20132019 unchanged, so metric shifts reflect retrained model not new test labels."
+      },
+      {
+        "q": "7. New methodological issues?",
+        "a": "None new beyond known extreme test-set imbalance (mostly Low in 2016\u20132019) and sparse 2007\u20132009 years."
+      },
+      {
+        "q": "8. Retrain as next controlled experiment?",
+        "a": "Evaluation supports a controlled retrain experiment on rebuilt data; production model.pkl was not updated in Step 13."
+      }
+    ],
+    "measured": "All metrics from in-memory RF fits with fixed hyperparameters.",
+    "interpretation": "Metrics mix train composition effects and fixed test regimes; macro F1 is sensitive to minority classes.",
+    "limitations": "No tuning; single holdout; test period remains Low-dominated; 2007\u20132009 sensitivity is diagnostic only."
+  },
+  "integrity": {
+    "production_csv_unchanged": true,
+    "model_pkl_unchanged": true,
+    "feature_engineering_unchanged": true,
+    "rebuilt_csv_unchanged": true,
+    "hashes": {
+      "production_csv_sha256": "5aa4112d841edfc2d1938de7c08e989902368dec29addea93446e402ecb1f435",
+      "model_pkl_sha256": "06554226c977189dd594219ef7b841ba2fcfeea558939de374399f577af05f8d",
+      "feature_engineering_sha256": "57cb0675f7d52dd48e30551fa324871e7d1522df3012ba5956b211acf76a46f4",
+      "rebuilt_csv_sha256": "494a44721524662912b29ea713d636eef82e16730c3d8889b98c39ca27071378"
+    },
+    "methodology": {
+      "no_hyperparameter_tuning": true,
+      "no_random_split_for_primary": true,
+      "no_smote": true,
+      "no_label_changes": true,
+      "model_pkl_not_written": true
+    }
+  }
+}
