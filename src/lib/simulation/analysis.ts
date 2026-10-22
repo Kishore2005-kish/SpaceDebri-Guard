@@ -29,6 +29,7 @@ import { computeRisk, computeConfidence, DEFAULT_RISK_WEIGHTS, RiskWeights } fro
 import { OrbitalObject } from '@/lib/data/celestrak/types';
 import { getStkStatus } from '@/lib/stk/service';
 import { ensureDemoSeeded } from '@/lib/services';
+import { saveRecording } from '@/lib/supabase/recordings';
 
 export interface AnalysisConfig {
   // Primary
@@ -448,6 +449,22 @@ async function runAnalysisAsync(analysisId: string, config: AnalysisConfig): Pro
         analysisId: analysisUuid,
       },
     });
+
+    // Keep a durable, portable copy in Supabase for the recorded-data view.
+    // A Supabase outage must not invalidate the local analysis job.
+    await saveRecording({
+      recordType: 'analysis',
+      recordId: analysisId,
+      payload: {
+        analysisId: analysisUuid,
+        status: 'COMPLETE',
+        completedAt: new Date().toISOString(),
+        primaries: primaries.length,
+        secondaries: allSecondaries.length,
+        pairsScreened: totalPairs,
+        conjunctionsFound: totalConjunctions,
+      },
+    }).catch((error) => console.error('Supabase recording failed:', error));
   } catch (e: any) {
     await db.analysisRun.update({
       where: { id: analysisId },

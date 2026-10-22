@@ -1,8 +1,6 @@
 // Prisma schema for SENTINEL — Conjunction Awareness for Small-Sat Operators (PS-04.3)
 //
-// SQLite is used (per the fullstack-dev skill stack) instead of PostgreSQL.
-// The schema is designed to be PostgreSQL-compatible — to migrate, just
-// change the `provider` to "postgresql" and the `url` env var.
+// Supabase PostgreSQL is the production data store.
 //
 // This is a prototype decision-support system, not authoritative collision
 // avoidance. Catalog IDs are stored as strings to support 6+ digit NORAD IDs
@@ -13,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -235,4 +233,17 @@ model EventLog {
   eventType String   // DETECTION | OPERATOR_OPENED | SIMULATION_CREATED | STATUS_CHANGE | EXPORT | ...
   payload   String   // JSON
   createdAt DateTime @default(now())
+}
+
+model Recording {
+  id         String   @id @default(uuid())
+  recordType String   @map("record_type")
+  recordId   String?  @map("record_id")
+  payload    Json
+  source     String   @default("sentinel")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([recordType])
+  @@map("recordings")
 }
