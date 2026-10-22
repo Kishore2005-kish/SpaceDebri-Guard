@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-10-22",
+  "tests": [
+    {"id":"api-home","workflow":"Dashboard","expected":"Next application responds","actual":"HTTP 200 on configured test instance port 3001","status":"PASS"},
+    {"id":"api-status","workflow":"Dashboard and provenance","expected":"Status identifies source and counts","actual":"HTTP 200; status DEMO, source SENTINEL-DEMO, 26 objects, 4 protected","status":"PASS","limitation":"Synthetic demo data, not live CelesTrak observations."},
+    {"id":"api-dashboard","workflow":"Dashboard","expected":"Summary is populated from API data","actual":"HTTP 200; 26 objects and 1 upcoming conjunction returned","status":"PASS"},
+    {"id":"api-satellites","workflow":"Satellite catalog","expected":"Catalog loads with identifiers and orbital metadata","actual":"HTTP 200; synthetic catalog records include IDs, epochs, source and retrieval metadata","status":"PASS"},
+    {"id":"api-conjunctions","workflow":"Conjunction analysis","expected":"TCA, miss distance, risk disclaimer and provenance are available","actual":"HTTP 200; 1 conjunction returned with TCA, 0.190565 km miss distance, heuristic disclaimer","status":"PASS"},
+    {"id":"api-recordings","workflow":"Supabase persistence","expected":"Recorded evidence can be read","actual":"HTTP 200; 1 presentation-demo recording returned","status":"PASS"},
+    {"id":"ml-service","workflow":"Space-weather prediction","expected":"Port 8000 serves SpaceDebri-Guard FastAPI health/predict endpoints","actual":"Blocked: port 8000 was occupied by an unrelated service returning a different /health contract","status":"BLOCKED","limitation":"Start the project sentinel process in a clean environment and verify /health plus /predict."},
+    {"id":"browser-ui","workflow":"All frontend workflows","expected":"Pages, clicks, empty states and source labels render correctly","actual":"Blocked: no browser automation driver available","status":"BLOCKED"},
+    {"id":"unit-tests","workflow":"Regression checks","expected":"Existing tests pass","actual":"62 assertions passed","status":"PASS"},
+    {"id":"qa","workflow":"Build integrity","expected":"Lint, typecheck, Prisma validation and production build pass","actual":"All passed","status":"PASS"},
+    {"id":"orbital-validation","workflow":"Scientific validation","expected":"Existing orbital comparison is reproducible","actual":"15 comparisons; 5 within strict tolerance, 10 outside","status":"FAIL","limitation":"Known unexplained npm/Python long-horizon discrepancy."},
+    {"id":"system-validation","workflow":"System integrity","expected":"No hidden database/demo integrity failures","actual":"10 passed, 0 failed, 2 blocked","status":"PASS","limitation":"Authentication/RLS and browser checks remain blocked."}
+  ]
+}

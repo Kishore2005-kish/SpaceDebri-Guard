@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_SPACE_WEATHER_API_URL ?? 'http://127.0.0.1:8000';
 
 export interface PredictionParams {
   density?: number | string;
@@ -49,6 +49,8 @@ export interface PredictionResult {
   risk_level: string;
   explanation: string;
   class_probabilities?: Record<string, number>;
+  prediction_source?: 'trained_model' | 'heuristic_fallback' | 'cached' | 'unavailable';
+  model_version?: string;
 }
 
 export interface SpaceWeatherCurrentResponse {
@@ -82,7 +84,8 @@ export const getPrediction = async (params?: PredictionParams) => {
       data: {
         risk_level: 'LOW',
         risk_score: 12.0,
-        explanation: 'Solar activity is extremely quiet with no active sunspots.'
+        explanation: 'No prediction inputs supplied.',
+        prediction_source: 'unavailable',
       } as PredictionResult
     };
   }
@@ -117,9 +120,14 @@ export const getPrediction = async (params?: PredictionParams) => {
     };
     
     const response = await axios.post<PredictionResult>(`${API_BASE_URL}/predict`, payload);
+    const prediction = response.data;
+    if (!prediction || typeof prediction.risk_level !== 'string' || typeof prediction.risk_score !== 'number' || typeof prediction.explanation !== 'string') {
+      throw new Error('FastAPI returned an incomplete prediction response');
+    }
+    response.data = { ...prediction, prediction_source: 'trained_model' };
     return response;
   } catch (error) {
-    console.warn("FastAPI Prediction API failed. Falling back to local model.", error);
+    console.warn("FastAPI prediction unavailable. Returning explicitly labeled heuristic fallback.", error);
     
     const speed = parseFloat(params.speed as string) || 310.0;
     const proton = parseFloat(params.proton_flux as string) || 0.22;
@@ -147,7 +155,8 @@ export const getPrediction = async (params?: PredictionParams) => {
       data: {
         risk_level,
         risk_score,
-        explanation
+        explanation,
+        prediction_source: 'heuristic_fallback',
       } as PredictionResult
     };
   }

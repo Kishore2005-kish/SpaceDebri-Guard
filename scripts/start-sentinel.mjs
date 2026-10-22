@@ -85,7 +85,8 @@ const uvicornPath = existsSync(join(backendPath, '.venv', 'bin', 'uvicorn'))
     ? join(backendPath, 'venv', 'bin', 'uvicorn')
     : 'uvicorn';
 
-const backendProcess = spawn(uvicornPath, ['api:app', '--host', '127.0.0.1', '--port', '8000'], {
+const weatherPort = process.env.SPACE_WEATHER_PORT ?? '8000';
+const backendProcess = spawn(uvicornPath, ['api:app', '--host', '127.0.0.1', '--port', weatherPort], {
   cwd: backendPath,
   stdio: 'inherit',
   env: { ...process.env },
@@ -117,7 +118,7 @@ setTimeout(() => {
   console.log('\x1b[32m│  http://localhost:3000                       │\x1b[0m');
   console.log('\x1b[32m│                                              │\x1b[0m');
   console.log('\x1b[32m│  Space Weather API is running at:            │\x1b[0m');
-  console.log('\x1b[32m│  http://localhost:8000                       │\x1b[0m');
+  console.log(`\x1b[32m│  http://localhost:${weatherPort}                       │\x1b[0m`);
   console.log('\x1b[32m│                                              │\x1b[0m');
   console.log('\x1b[32m│  Press Ctrl+C to stop.                      │\x1b[0m');
   console.log('\x1b[32m└─────────────────────────────────────────────┘\x1b[0m\n');

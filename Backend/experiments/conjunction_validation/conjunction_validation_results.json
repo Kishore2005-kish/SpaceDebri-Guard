@@ -1,0 +1,132 @@
+{
+  "generated_utc": "2026-10-22T13:38:32.942657+00:00",
+  "production_implementation": "src/lib/orbital/conjunction.ts screen()",
+  "frame": "TEME",
+  "position_units": "km",
+  "velocity_units": "km/s",
+  "configuration": {
+    "coarse_step_sec": 60,
+    "coarse_threshold_km": 600,
+    "fine_step_sec": 1,
+    "fine_window_sec_each_side": 600,
+    "default_threshold_km": 5,
+    "default_horizon_days": 7,
+    "tca_refinement": "linear projection at fine minimum; apply only |dt| < 60 sec; re-propagate and accept only if range improves"
+  },
+  "analytical_tca_tests": {
+    "between_samples": {
+      "status": "ok",
+      "expected_offset_sec": 10.0,
+      "used_offset_sec": 10.0,
+      "expected_range_km": 0.0
+    },
+    "nonzero_miss": {
+      "status": "ok",
+      "expected_offset_sec": 10.0,
+      "used_offset_sec": 10.0,
+      "expected_range_km": 3.0
+    },
+    "boundary_clamped": {
+      "status": "ok",
+      "expected_offset_sec": -2.0,
+      "used_offset_sec": 0,
+      "expected_range_km": 2.0
+    },
+    "zero_velocity": {
+      "status": "undefined-zero-relative-velocity"
+    }
+  },
+  "synthetic_sgp4_scenarios": [
+    {
+      "id": "synthetic-showcase",
+      "primary": "MYSAT-01",
+      "secondary": "DBR-2841",
+      "start": "2026-10-22T00:00:00Z",
+      "end": "2026-10-26T00:00:00Z",
+      "thresholdKm": 5,
+      "expected": "detect",
+      "expectedTca": "2026-10-25T00:00:00Z",
+      "expectedRangeKm": 0.15,
+      "detected": true,
+      "result": {
+        "tca": "2026-10-24T23:59:59.988Z",
+        "minRangeKm": 0.09379746672864497,
+        "relVelocityKmPerSec": 9.776283565140606,
+        "screeningStart": "2026-10-22T00:00:00.000Z",
+        "screeningEnd": "2026-10-26T00:00:00.000Z"
+      },
+      "tca_error_sec": 0.012,
+      "miss_distance_error_km": 0.05620253327135502
+    },
+    {
+      "id": "synthetic-crossing",
+      "primary": "EAST-WEST-01",
+      "secondary": "NORTH-SOUTH-X",
+      "start": "2026-10-22T00:00:00Z",
+      "end": "2026-10-24T00:00:00Z",
+      "thresholdKm": 5,
+      "expected": "detect",
+      "expectedTca": "2026-10-23T12:00:00Z",
+      "expectedRangeKm": 0.25,
+      "detected": true,
+      "result": {
+        "tca": "2026-10-23T11:59:59.982Z",
+        "minRangeKm": 0.1905653235626634,
+        "relVelocityKmPerSec": 10.765044549483457,
+        "screeningStart": "2026-10-22T00:00:00.000Z",
+        "screeningEnd": "2026-10-24T00:00:00.000Z"
+      },
+      "tca_error_sec": 0.018,
+      "miss_distance_error_km": 0.0594346764373366
+    },
+    {
+      "id": "synthetic-safe-pair",
+      "primary": "MYSAT-01",
+      "secondary": "IRIDIUM-33-DBR",
+      "start": "2026-10-22T00:00:00Z",
+      "end": "2026-10-23T00:00:00Z",
+      "thresholdKm": 5,
+      "expected": "no-detect",
+      "detected": false,
+      "result": null
+    }
+  ],
+  "detection_summary": {
+    "expected_encounters": 2,
+    "detected": 2,
+    "missed": 0,
+    "unexpected_detections": 0,
+    "tca_tolerance_sec": 1.0,
+    "range_tolerance_km": 1e-09,
+    "matched_tca_error_sec": [
+      0.012,
+      0.018
+    ],
+    "matched_miss_distance_error_km": [
+      0.05620253327135502,
+      0.0594346764373366
+    ]
+  },
+  "threshold_boundary_tests": {
+    "below_threshold": "covered by synthetic crossings at 0.15/0.25 km targets and threshold 5 km",
+    "at_threshold": "not directly constructible through public screen() because result minRange is data-dependent; production uses strict minRange >= threshold => no detection",
+    "above_threshold": "production uses strict minRange >= threshold => no detection"
+  },
+  "risk_findings": {
+    "formula": "weighted sum of miss distance 40%, data uncertainty 20%, relative velocity 15%, geometry 15%, freshness 10%; rounded and clamped 0..100",
+    "interpretation": "heuristic score, not collision probability"
+  },
+  "independent_reference": {
+    "available": false,
+    "reason": "No historical conjunction reference dataset was found in the repository; synthetic cases are not real events."
+  },
+  "invalid_input_tests": {
+    "production_screen_invalid_data": "not invoked through screen because malformed OrbitalObject can fail during SGP4 construction; production propagation throws or returns non-finite states, but screen does not explicitly catch propagation failures in coarse/fine passes.",
+    "missing_data": "not silently converted to a valid conjunction by this harness"
+  },
+  "warnings": [
+    "Synthetic scenarios validate controlled mathematics and software behavior only.",
+    "No real-world conjunction accuracy claim is supported.",
+    "Production screen() does not catch propagation exceptions in its coarse/fine loops; a malformed object can abort the screen call rather than return a structured failure."
+  ]
+}

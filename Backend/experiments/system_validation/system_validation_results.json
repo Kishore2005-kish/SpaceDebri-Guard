@@ -1,0 +1,95 @@
+{
+  "generated_at": "2026-10-22T13:47:27.878917+00:00",
+  "workspace": "/Users/kishorep/Desktop/Space-debri",
+  "summary": {
+    "PASS": 10,
+    "FAIL": 0,
+    "BLOCKED": 2
+  },
+  "checks": [
+    {
+      "name": "prisma-schema-validation",
+      "status": "PASS",
+      "evidence": "Prisma schema loaded from prisma/schema.prisma\nThe schema at prisma/schema.prisma is valid \ud83d\ude80\nEnvironment variables loaded from .env"
+    },
+    {
+      "name": "supabase-database-connectivity",
+      "status": "PASS",
+      "evidence": "Read-only SELECT 1 executed through Prisma against DATABASE_URL."
+    },
+    {
+      "name": "supabase-application-data",
+      "status": "PASS",
+      "evidence": {
+        "satellites": 26,
+        "conjunctions": 1,
+        "analyses": 0,
+        "recordings": 1,
+        "latestSatellite": {
+          "id": "RB-CZ2C",
+          "name": "CZ-2C R/B",
+          "source": "SENTINEL-DEMO",
+          "epoch": "2026-10-27T13:11:24.678Z"
+        },
+        "latestConjunction": {
+          "id": "cmvjk80zm0001xtjcztif0c51",
+          "status": "NEW",
+          "minRange": 0.1905653235652849
+        }
+      }
+    },
+    {
+      "name": "production-ml-artifacts",
+      "status": "PASS",
+      "evidence": {
+        "model": "/Users/kishorep/Desktop/Space-debri/Backend/model.pkl",
+        "training_data": "/Users/kishorep/Desktop/Space-debri/Backend/data/processed/final_with_kp_sw.csv",
+        "model_exists": true,
+        "training_data_exists": true
+      }
+    },
+    {
+      "name": "demo-seed-disabled-by-default",
+      "status": "PASS",
+      "evidence": "ALLOW_DEMO_DATA !== 'true'"
+    },
+    {
+      "name": "startup-does-not-run-db-push",
+      "status": "PASS",
+      "evidence": "db:push is not invoked by scripts/start-sentinel.mjs"
+    },
+    {
+      "name": "recordings-use-supabase",
+      "status": "PASS",
+      "evidence": "src/lib/supabase/recordings.ts"
+    },
+    {
+      "name": "orbital-validation-artifact",
+      "status": "PASS",
+      "evidence": "Backend/experiments/orbital_validation/validation_results.json"
+    },
+    {
+      "name": "conjunction-validation-artifact",
+      "status": "PASS",
+      "evidence": "Backend/experiments/conjunction_validation/validation_results.json"
+    },
+    {
+      "name": "ml-failure-integrity",
+      "status": "PASS",
+      "evidence": "ML responses and fallback responses carry explicit prediction_source values."
+    },
+    {
+      "name": "authenticated-api-boundary",
+      "status": "BLOCKED",
+      "evidence": "No authenticated runtime session was supplied to this read-only validator.",
+      "limitation": "Review route authentication and Supabase RLS policies before production deployment."
+    },
+    {
+      "name": "browser-ui-workflow",
+      "status": "BLOCKED",
+      "evidence": "No browser automation driver is configured in this environment.",
+      "limitation": "API/database checks do not prove that every frontend interaction renders and persists correctly."
+    }
+  ],
+  "scope": "Read-only validation; no schema synchronization, seed, write, commit, or push performed."
+}

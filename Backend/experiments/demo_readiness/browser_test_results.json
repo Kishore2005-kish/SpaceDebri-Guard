@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-10-22",
+  "browser": "Google Chrome headless",
+  "base_url": "http://127.0.0.1:3001",
+  "tests": [
+    {"name":"dashboard","workflow":"Dashboard","expected":"Dashboard loads","actual":"HTML returned (39532 bytes)","status":"PASS"},
+    {"name":"catalog","workflow":"Satellite catalog","expected":"Catalog loads","actual":"HTML returned (23839 bytes)","status":"PASS"},
+    {"name":"status-api","workflow":"Dashboard provenance","expected":"Status API returns JSON","actual":"JSON response returned","status":"PASS"},
+    {"name":"satellites-api","workflow":"Satellite catalog","expected":"Satellite API returns JSON","actual":"JSON response returned","status":"PASS"},
+    {"name":"conjunctions-api","workflow":"Conjunction workflow","expected":"Conjunction API returns JSON","actual":"JSON response returned","status":"PASS"},
+    {"name":"weather-interaction","workflow":"Space weather prediction","expected":"Browser requests configured FastAPI and displays source","actual":"Blocked by shared Next .next lock when attempting alternate-port rebuild","status":"BLOCKED"},
+    {"name":"cesium-interaction","workflow":"Visualization","expected":"Cesium initializes and controls work","actual":"Blocked: headless smoke did not execute interactive Cesium controls","status":"BLOCKED"}
+  ]
+}

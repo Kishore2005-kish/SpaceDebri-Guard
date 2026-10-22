@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-10-22",
+  "root_cause": "Port 8000 was occupied by an unrelated service; the project virtual environment also lacked a local uvicorn launcher even though declared dependencies were available through its linked environment.",
+  "service_url": "http://127.0.0.1:8001",
+  "startup": {"status":"PASS","command":"Backend/.venv/bin/python -m uvicorn api:app --host 127.0.0.1 --port 8001"},
+  "health": {"status":"PASS","http_status":200,"evidence":"FastAPI health returned the project model path, training-data path, and expected feature columns."},
+  "prediction": {"status":"PASS","http_status":200,"prediction_source":"trained_model","model_version":"production-artifact","risk_level":"LOW","risk_score":99.4},
+  "frontend_configuration": {"status":"PASS","evidence":"Frontend ML base URL is configurable with NEXT_PUBLIC_SPACE_WEATHER_API_URL and defaults to 127.0.0.1:8000."},
+  "frontend_live_request": {"status":"BLOCKED","evidence":"Existing Next process could not be restarted with the alternate build-time URL because the shared .next/dev lock was held by another process."},
+  "fallback_behavior": {"status":"PASS","evidence":"Client source labels service success as trained_model, unavailable/no-input as unavailable, and retained fallback as heuristic_fallback."},
+  "recovery_behavior": {"status":"PASS","evidence":"The intended FastAPI service was started and returned a real production-artifact prediction after the unrelated port was avoided."},
+  "limitations":["No credentials or database writes were used.","The production model artifact was loaded; no artifact was modified."]
+}

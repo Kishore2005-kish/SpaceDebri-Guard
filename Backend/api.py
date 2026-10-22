@@ -399,4 +399,6 @@ def predict(data: dict):
         "risk_level": risk_level,
         "explanation": explain_features(feature_row),
         "class_probabilities": class_probabilities,
+        "prediction_source": "trained_model",
+        "model_version": str(MODEL_ARTIFACT.get("model_version", "production-artifact")),
     }

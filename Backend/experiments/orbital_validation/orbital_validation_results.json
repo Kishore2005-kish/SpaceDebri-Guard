@@ -1,0 +1,1110 @@
+{
+  "generated_utc": "2026-10-22T13:46:21.735544+00:00",
+  "production_implementation": "npm sgp4@1.0.10 via src/lib/orbital/sgp4.ts",
+  "reference_implementation": "Python sgp4 2.25 (Vallado reference port)",
+  "frame": "TEME",
+  "position_units": "km",
+  "velocity_units": "km/s",
+  "epoch_convention": "UTC ISO epoch converted to Julian date; sgp4init epoch is JD - 2433281.5",
+  "tolerances": {
+    "position_km": 1e-06,
+    "velocity_km_per_sec": 1e-09
+  },
+  "test_cases": [
+    {
+      "id": "iss-25544",
+      "catalog_id": "25544",
+      "name": "ISS (ZARYA)",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "source": "validation-fixture",
+      "timestamps": [
+        "2026-08-18T19:47:11.368896Z",
+        "2026-08-18T20:47:11.368896Z",
+        "2026-08-19T19:47:11.368896Z",
+        "2026-08-25T19:47:11.368896Z",
+        "2026-09-17T19:47:11.368896Z"
+      ],
+      "offset_minutes": [
+        0,
+        60,
+        1440,
+        10080,
+        43200
+      ]
+    },
+    {
+      "id": "leo-polar",
+      "catalog_id": "43013",
+      "name": "POLAR-LEO-FIXTURE",
+      "epoch": "2024-01-15T12:00:00Z",
+      "source": "validation-fixture",
+      "timestamps": [
+        "2024-01-15T12:00:00Z",
+        "2024-01-15T13:00:00Z",
+        "2024-01-16T12:00:00Z",
+        "2024-01-22T12:00:00Z",
+        "2024-02-14T12:00:00Z"
+      ],
+      "offset_minutes": [
+        0,
+        60,
+        1440,
+        10080,
+        43200
+      ]
+    },
+    {
+      "id": "geo",
+      "catalog_id": "41866",
+      "name": "GEO-FIXTURE",
+      "epoch": "2024-01-15T12:00:00Z",
+      "source": "validation-fixture",
+      "timestamps": [
+        "2024-01-15T12:00:00Z",
+        "2024-01-15T13:00:00Z",
+        "2024-01-16T12:00:00Z",
+        "2024-01-22T12:00:00Z",
+        "2024-02-14T12:00:00Z"
+      ],
+      "offset_minutes": [
+        0,
+        60,
+        1440,
+        10080,
+        43200
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-18T19:47:11.368896Z",
+      "offset_minutes": 0,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          6693.035244176079,
+          -1170.082346285832,
+          0.031789193570485694
+        ],
+        "velocityKmPerSec": [
+          0.8072950014374373,
+          4.6858543119067155,
+          6.010599634885817
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-18T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          6693.035245673828,
+          -1170.082337592261,
+          0.0318003448978052
+        ],
+        "velocityKmPerSec": [
+          0.8072949856355082,
+          4.685854314669224,
+          6.010599634885743
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4218773957976506e-05,
+      "velocity_error_km_per_sec": 1.6041583966232054e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-18T20:47:11.368896Z",
+      "offset_minutes": 60,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -4639.7621470826425,
+          -2592.342603761355,
+          -4250.713973386555
+        ],
+        "velocityKmPerSec": [
+          5.493098159529741,
+          -3.8939939215577484,
+          -3.6253000316800468
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-18T20:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          -4639.762210559382,
+          -2592.3425587634565,
+          -4250.713931493429
+        ],
+        "velocityKmPerSec": [
+          5.493098091821669,
+          -3.8939939593878328,
+          -3.625300093888494
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 8.83693458750663e-05,
+      "velocity_error_km_per_sec": 9.942529465866162e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-19T19:47:11.368896Z",
+      "offset_minutes": 1440,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -6609.443573603894,
+          1583.2514399734855,
+          -209.4445423533358
+        ],
+        "velocityKmPerSec": [
+          -0.9387422104037269,
+          -4.663146981491402,
+          -6.001768782292124
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-19T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          -6609.443575345514,
+          1583.2514313221495,
+          -209.444553488175
+        ],
+        "velocityKmPerSec": [
+          -0.9387421948345818,
+          -4.663146985220891,
+          -6.001768781797342
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4207867420141594e-05,
+      "velocity_error_km_per_sec": 1.601724614196877e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-25T19:47:11.368896Z",
+      "offset_minutes": 10080,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -5444.598807741821,
+          3832.4452316495576,
+          -1380.1675401433847
+        ],
+        "velocityKmPerSec": [
+          -1.818250171341505,
+          -4.653783531133721,
+          -5.802853761730777
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-25T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          -5444.598811115326,
+          3832.445223015129,
+          -1380.1675509097581
+        ],
+        "velocityKmPerSec": [
+          -1.8182501585196202,
+          -4.65378354015903,
+          -5.802853758471222
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4207346249654055e-05,
+      "velocity_error_km_per_sec": 1.6015044072112874e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-09-17T19:47:11.368896Z",
+      "offset_minutes": 43200,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          998.2928622296304,
+          -4119.535933651533,
+          5301.029074307763
+        ],
+        "velocityKmPerSec": [
+          7.255534062153548,
+          2.4181626602868134,
+          0.5042679939977232
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-09-17T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          998.2928756883883,
+          -4119.535929165927,
+          5301.02907524316
+        ],
+        "velocityKmPerSec": [
+          7.255534059799824,
+          2.418162669999637,
+          0.5042679814633837
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4217376523149329e-05,
+      "velocity_error_km_per_sec": 1.603086469449488e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "leo-polar",
+      "catalog_id": "43013",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-15T12:00:00Z",
+      "offset_minutes": 0,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -3529.793962587055,
+          -1087.038211233432,
+          6167.873435698672
+        ],
+        "velocityKmPerSec": [
+          5.340903422191394,
+          3.652123790699209,
+          3.692578772111546
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-15T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          -3529.7939625870554,
+          -1087.0382112334328,
+          6167.873435698671
+        ],
+        "velocityKmPerSec": [
+          5.340903422191393,
+          3.652123790699209,
+          3.6925787721115477
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.995195904644816e-12,
+      "velocity_error_km_per_sec": 1.9860273225978185e-15,
+      "within_tolerance": true
+    },
+    {
+      "case_id": "leo-polar",
+      "catalog_id": "43013",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-15T13:00:00Z",
+      "offset_minutes": 60,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          172.84013455377996,
+          -1002.1636792110284,
+          -7146.0900638802195
+        ],
+        "velocityKmPerSec": [
+          -6.437844261422501,
+          -3.6662808318591456,
+          0.36341899695395574
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-15T13:00:00Z",
+        "ok": true,
+        "positionKm": [
+          172.84022089220306,
+          -1002.1636300422566,
+          -7146.090068754074
+        ],
+        "velocityKmPerSec": [
+          -6.437844258977764,
+          -3.6662808460337617,
+          0.36341889562114255
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 9.947686102048971e-05,
+      "velocity_error_km_per_sec": 1.0234859799455185e-07,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "leo-polar",
+      "catalog_id": "43013",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-16T12:00:00Z",
+      "offset_minutes": 1440,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          3528.5077532831056,
+          2967.734139740006,
+          5525.226677886668
+        ],
+        "velocityKmPerSec": [
+          5.276872667327487,
+          2.430172100320304,
+          -4.653881551485487
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-16T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          3528.507753283106,
+          2967.734139740006,
+          5525.226677886669
+        ],
+        "velocityKmPerSec": [
+          5.276872667327487,
+          2.430172100320304,
+          -4.653881551485487
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.016845989170083e-12,
+      "velocity_error_km_per_sec": 0.0,
+      "within_tolerance": true
+    },
+    {
+      "case_id": "leo-polar",
+      "catalog_id": "43013",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-22T12:00:00Z",
+      "offset_minutes": 10080,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          5858.033871650876,
+          4188.178643964573,
+          -427.1018917311332
+        ],
+        "velocityKmPerSec": [
+          0.2276290312095236,
+          -1.0467871760103236,
+          -7.35350345855512
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-22T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          5858.033871650877,
+          4188.178643964574,
+          -427.10189173113326
+        ],
+        "velocityKmPerSec": [
+          0.22762903120952355,
+          -1.0467871760103236,
+          -7.35350345855512
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.2874752034015415e-12,
+      "velocity_error_km_per_sec": 5.551115123125783e-17,
+      "within_tolerance": true
+    },
+    {
+      "case_id": "leo-polar",
+      "catalog_id": "43013",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-02-14T12:00:00Z",
+      "offset_minutes": 43200,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -3157.616529351267,
+          -5466.157974362786,
+          -3464.1244435190983
+        ],
+        "velocityKmPerSec": [
+          -2.7406472232480072,
+          -2.500408719002539,
+          6.452044562256675
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-02-14T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          -3157.6165293512686,
+          -5466.157974362786,
+          -3464.1244435190947
+        ],
+        "velocityKmPerSec": [
+          -2.740647223248005,
+          -2.500408719002536,
+          6.452044562256677
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 3.885363069147175e-12,
+      "velocity_error_km_per_sec": 4.213000162292041e-15,
+      "within_tolerance": true
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-15T12:00:00Z",
+      "offset_minutes": 0,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          29833.89186738855,
+          -29795.87686280591,
+          -88.85698264871498
+        ],
+        "velocityKmPerSec": [
+          2.1730777682304523,
+          2.1752004448731284,
+          -0.00014917387745432212
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-15T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          29833.891867388524,
+          -29795.876862805944,
+          -88.85698264870335
+        ],
+        "velocityKmPerSec": [
+          2.1730777682304545,
+          2.1752004448731266,
+          -0.00014917387745416012
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 4.307742088127659e-11,
+      "velocity_error_km_per_sec": 2.8481696784568815e-15,
+      "within_tolerance": true
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-15T13:00:00Z",
+      "offset_minutes": 60,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          36545.28753096808,
+          -21034.145101399445,
+          -86.33581677904314
+        ],
+        "velocityKmPerSec": [
+          1.5341045517669876,
+          2.6644985934695136,
+          0.0015366883833495286
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-15T13:00:00Z",
+        "ok": true,
+        "positionKm": [
+          36545.29138126185,
+          -21034.14850907807,
+          -86.33582760902644
+        ],
+        "velocityKmPerSec": [
+          1.5341045253975114,
+          2.6644983967456173,
+          0.0015366881373590298
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 0.0051417072065980856,
+      "velocity_error_km_per_sec": 1.9848350347921926e-07,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-16T12:00:00Z",
+      "offset_minutes": 1440,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          30339.67349691292,
+          -29280.68372374677,
+          -88.82662197563096
+        ],
+        "velocityKmPerSec": [
+          2.135513304983983,
+          2.2120863406266307,
+          -2.9590431438382097e-05
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-16T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          30339.363807049613,
+          -29281.17855204078,
+          -88.82687113050784
+        ],
+        "velocityKmPerSec": [
+          2.135540210135931,
+          2.212054248710055,
+          -2.967812672518037e-05
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 0.5837490163302247,
+      "velocity_error_km_per_sec": 4.187822824951732e-05,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-22T12:00:00Z",
+      "offset_minutes": 10080,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          33198.75041801181,
+          -25993.994531430308,
+          -99.20382147065654
+        ],
+        "velocityKmPerSec": [
+          1.8958668185902157,
+          2.4206008843789832,
+          0.0008399729743072
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-22T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          33182.15612744239,
+          -26016.538796758097,
+          -99.21343405868318
+        ],
+        "velocityKmPerSec": [
+          1.897453870414094,
+          2.4193182127406305,
+          0.000835163699383165
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 27.993114708337135,
+      "velocity_error_km_per_sec": 0.0020405889229913976,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-02-14T12:00:00Z",
+      "offset_minutes": 43200,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          40752.38395173069,
+          -10819.132321330502,
+          -105.66365929128183
+        ],
+        "velocityKmPerSec": [
+          0.7893233240180517,
+          2.971553088699938,
+          0.003374258185917033
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-02-14T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          40620.77299703274,
+          -11316.541872443073,
+          -106.22955780984798
+        ],
+        "velocityKmPerSec": [
+          0.8254914457768492,
+          2.9615770020633065,
+          0.003279839864166893
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 514.5269916881408,
+      "velocity_error_km_per_sec": 0.03751885194086116,
+      "within_tolerance": false
+    }
+  ],
+  "summary": {
+    "valid_comparisons": 15,
+    "within_tolerance": 5,
+    "outside_tolerance": 10,
+    "position_error_km": {
+      "n": 15,
+      "median": 1.4217376523149329e-05,
+      "p90": 17.02936843153436,
+      "max": 514.5269916881408
+    },
+    "velocity_error_km_per_sec": {
+      "n": 15,
+      "median": 1.603086469449488e-08,
+      "p90": 0.0012411046450946446,
+      "max": 0.03751885194086116
+    }
+  },
+  "invalid_input_tests": [
+    {
+      "id": "invalid-eccentricity",
+      "states": [
+        {
+          "timestamp": "2026-08-18T19:47:11.368896Z",
+          "ok": false,
+          "error": "SGP4 propagation failed for ISS (ZARYA) (25545) at 2026-08-18T19:47:11.368Z: mean eccentricity 1.2 not within range 0.0 <= e < 1.0"
+        }
+      ]
+    },
+    {
+      "id": "invalid-zero-mean-motion",
+      "states": [
+        {
+          "timestamp": "2026-08-18T19:47:11.368896Z",
+          "ok": false,
+          "error": "non-finite output"
+        }
+      ]
+    },
+    {
+      "id": "invalid-null-bstar",
+      "states": [
+        {
+          "timestamp": "2026-08-18T19:47:11.368896Z",
+          "ok": false,
+          "error": "Cannot read properties of null (reading 'toFixed')"
+        }
+      ]
+    }
+  ],
+  "failed_cases": [
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-18T19:47:11.368896Z",
+      "offset_minutes": 0,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          6693.035244176079,
+          -1170.082346285832,
+          0.031789193570485694
+        ],
+        "velocityKmPerSec": [
+          0.8072950014374373,
+          4.6858543119067155,
+          6.010599634885817
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-18T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          6693.035245673828,
+          -1170.082337592261,
+          0.0318003448978052
+        ],
+        "velocityKmPerSec": [
+          0.8072949856355082,
+          4.685854314669224,
+          6.010599634885743
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4218773957976506e-05,
+      "velocity_error_km_per_sec": 1.6041583966232054e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-18T20:47:11.368896Z",
+      "offset_minutes": 60,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -4639.7621470826425,
+          -2592.342603761355,
+          -4250.713973386555
+        ],
+        "velocityKmPerSec": [
+          5.493098159529741,
+          -3.8939939215577484,
+          -3.6253000316800468
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-18T20:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          -4639.762210559382,
+          -2592.3425587634565,
+          -4250.713931493429
+        ],
+        "velocityKmPerSec": [
+          5.493098091821669,
+          -3.8939939593878328,
+          -3.625300093888494
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 8.83693458750663e-05,
+      "velocity_error_km_per_sec": 9.942529465866162e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-19T19:47:11.368896Z",
+      "offset_minutes": 1440,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -6609.443573603894,
+          1583.2514399734855,
+          -209.4445423533358
+        ],
+        "velocityKmPerSec": [
+          -0.9387422104037269,
+          -4.663146981491402,
+          -6.001768782292124
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-19T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          -6609.443575345514,
+          1583.2514313221495,
+          -209.444553488175
+        ],
+        "velocityKmPerSec": [
+          -0.9387421948345818,
+          -4.663146985220891,
+          -6.001768781797342
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4207867420141594e-05,
+      "velocity_error_km_per_sec": 1.601724614196877e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-08-25T19:47:11.368896Z",
+      "offset_minutes": 10080,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          -5444.598807741821,
+          3832.4452316495576,
+          -1380.1675401433847
+        ],
+        "velocityKmPerSec": [
+          -1.818250171341505,
+          -4.653783531133721,
+          -5.802853761730777
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-08-25T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          -5444.598811115326,
+          3832.445223015129,
+          -1380.1675509097581
+        ],
+        "velocityKmPerSec": [
+          -1.8182501585196202,
+          -4.65378354015903,
+          -5.802853758471222
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4207346249654055e-05,
+      "velocity_error_km_per_sec": 1.6015044072112874e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "iss-25544",
+      "catalog_id": "25544",
+      "epoch": "2026-08-18T19:47:11.368896Z",
+      "timestamp": "2026-09-17T19:47:11.368896Z",
+      "offset_minutes": 43200,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          998.2928622296304,
+          -4119.535933651533,
+          5301.029074307763
+        ],
+        "velocityKmPerSec": [
+          7.255534062153548,
+          2.4181626602868134,
+          0.5042679939977232
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2026-09-17T19:47:11.368896Z",
+        "ok": true,
+        "positionKm": [
+          998.2928756883883,
+          -4119.535929165927,
+          5301.02907524316
+        ],
+        "velocityKmPerSec": [
+          7.255534059799824,
+          2.418162669999637,
+          0.5042679814633837
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 1.4217376523149329e-05,
+      "velocity_error_km_per_sec": 1.603086469449488e-08,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "leo-polar",
+      "catalog_id": "43013",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-15T13:00:00Z",
+      "offset_minutes": 60,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          172.84013455377996,
+          -1002.1636792110284,
+          -7146.0900638802195
+        ],
+        "velocityKmPerSec": [
+          -6.437844261422501,
+          -3.6662808318591456,
+          0.36341899695395574
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-15T13:00:00Z",
+        "ok": true,
+        "positionKm": [
+          172.84022089220306,
+          -1002.1636300422566,
+          -7146.090068754074
+        ],
+        "velocityKmPerSec": [
+          -6.437844258977764,
+          -3.6662808460337617,
+          0.36341889562114255
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 9.947686102048971e-05,
+      "velocity_error_km_per_sec": 1.0234859799455185e-07,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-15T13:00:00Z",
+      "offset_minutes": 60,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          36545.28753096808,
+          -21034.145101399445,
+          -86.33581677904314
+        ],
+        "velocityKmPerSec": [
+          1.5341045517669876,
+          2.6644985934695136,
+          0.0015366883833495286
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-15T13:00:00Z",
+        "ok": true,
+        "positionKm": [
+          36545.29138126185,
+          -21034.14850907807,
+          -86.33582760902644
+        ],
+        "velocityKmPerSec": [
+          1.5341045253975114,
+          2.6644983967456173,
+          0.0015366881373590298
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 0.0051417072065980856,
+      "velocity_error_km_per_sec": 1.9848350347921926e-07,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-16T12:00:00Z",
+      "offset_minutes": 1440,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          30339.67349691292,
+          -29280.68372374677,
+          -88.82662197563096
+        ],
+        "velocityKmPerSec": [
+          2.135513304983983,
+          2.2120863406266307,
+          -2.9590431438382097e-05
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-16T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          30339.363807049613,
+          -29281.17855204078,
+          -88.82687113050784
+        ],
+        "velocityKmPerSec": [
+          2.135540210135931,
+          2.212054248710055,
+          -2.967812672518037e-05
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 0.5837490163302247,
+      "velocity_error_km_per_sec": 4.187822824951732e-05,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-01-22T12:00:00Z",
+      "offset_minutes": 10080,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          33198.75041801181,
+          -25993.994531430308,
+          -99.20382147065654
+        ],
+        "velocityKmPerSec": [
+          1.8958668185902157,
+          2.4206008843789832,
+          0.0008399729743072
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-01-22T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          33182.15612744239,
+          -26016.538796758097,
+          -99.21343405868318
+        ],
+        "velocityKmPerSec": [
+          1.897453870414094,
+          2.4193182127406305,
+          0.000835163699383165
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 27.993114708337135,
+      "velocity_error_km_per_sec": 0.0020405889229913976,
+      "within_tolerance": false
+    },
+    {
+      "case_id": "geo",
+      "catalog_id": "41866",
+      "epoch": "2024-01-15T12:00:00Z",
+      "timestamp": "2024-02-14T12:00:00Z",
+      "offset_minutes": 43200,
+      "reference": {
+        "ok": true,
+        "positionKm": [
+          40752.38395173069,
+          -10819.132321330502,
+          -105.66365929128183
+        ],
+        "velocityKmPerSec": [
+          0.7893233240180517,
+          2.971553088699938,
+          0.003374258185917033
+        ],
+        "frame": "TEME"
+      },
+      "production": {
+        "timestamp": "2024-02-14T12:00:00Z",
+        "ok": true,
+        "positionKm": [
+          40620.77299703274,
+          -11316.541872443073,
+          -106.22955780984798
+        ],
+        "velocityKmPerSec": [
+          0.8254914457768492,
+          2.9615770020633065,
+          0.003279839864166893
+        ],
+        "frame": "TEME"
+      },
+      "position_error_km": 514.5269916881408,
+      "velocity_error_km_per_sec": 0.03751885194086116,
+      "within_tolerance": false
+    }
+  ],
+  "warnings": [
+    "This validates numerical agreement between implementations, not real-world orbital accuracy.",
+    "Fixtures are deterministic OMM-style elements saved in this script; ISS elements are the same fixture used by the repository's existing SGP4 test."
+  ]
+}

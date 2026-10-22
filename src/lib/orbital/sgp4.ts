@@ -185,6 +185,10 @@ export function propagateSgp4(obj: OrbitalObject, t: Date): PropagatedState {
   // but uses a slightly different shape. Convert to our CartesianState.
   const posObj = Array.isArray(pos) ? { x: pos[0], y: pos[1], z: pos[2] } : pos;
   const velObj = Array.isArray(vel) ? { x: vel[0], y: vel[1], z: vel[2] } : vel;
+  const values = [posObj.x, posObj.y, posObj.z, velObj.x, velObj.y, velObj.z];
+  if (!values.every(Number.isFinite)) {
+    throw new Error(`SGP4 propagation returned non-finite state for ${obj.name} (${obj.catalogId}) at ${t.toISOString()}`);
+  }
 
   // Build a fake "elements" property so the rest of the app (which expected it
   // from the old Keplerian propagator) doesn't crash.

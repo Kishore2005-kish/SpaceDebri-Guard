@@ -536,6 +536,8 @@ export interface ScreeningResult {
   propagatorFrame: string;
   snapshotId: string | null;
   durationMs: number;
+  complete: boolean;
+  failedPairs: Array<{ primaryId: string; secondaryId: string; error: string }>;
 }
 
 export async function runScreening(opts: ScreeningOpts = {}): Promise<ScreeningResult> {
@@ -557,6 +559,7 @@ export async function runScreening(opts: ScreeningOpts = {}): Promise<ScreeningR
   const secondaries = await db.satellite.findMany({});
 
   const allConjunctions: ConjunctionDTO[] = [];
+  const failedPairs: ScreeningResult['failedPairs'] = [];
   const analysisId = uuidv4();
 
   for (const prim of primaries) {
@@ -658,8 +661,9 @@ export async function runScreening(opts: ScreeningOpts = {}): Promise<ScreeningR
           });
         }
       } catch (e: any) {
-        // SGP4 propagation might fail (e.g., decayed object). Skip silently.
-        console.error(`Screening ${prim.id} vs ${sec.id} failed: ${e.message}`);
+        const error = e instanceof Error ? e.message : String(e);
+        failedPairs.push({ primaryId: prim.id, secondaryId: sec.id, error });
+        console.error(`Screening ${prim.id} vs ${sec.id} failed: ${error}`);
       }
     }
   }
@@ -715,6 +719,8 @@ export async function runScreening(opts: ScreeningOpts = {}): Promise<ScreeningR
     propagatorFrame: SGP4_FRAME,
     snapshotId: latestSnapshot?.id ?? null,
     durationMs: Date.now() - t0,
+    complete: failedPairs.length === 0,
+    failedPairs,
   };
 }
 
