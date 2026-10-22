@@ -2,6 +2,7 @@
   "name": "sentinel-conjunction-awareness",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=20"
   },
@@ -15,7 +16,8 @@
     "smoke": "node scripts/smoke-test.mjs",
     "sentinel": "node scripts/start-sentinel.mjs",
     "start:local": "node scripts/start-sentinel.mjs",
-    "db:push": "prisma db push --accept-data-loss",
+    "db:push": "prisma db push",
+    "db:validate": "prisma validate",
     "db:generate": "prisma generate"
   },
   "dependencies": {
@@ -61,6 +63,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^18.0.8",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.2",
     "input-otp": "^1.4.2",

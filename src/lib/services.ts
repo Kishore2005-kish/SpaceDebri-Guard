@@ -169,6 +169,7 @@ function demoToOrbitalObject(d: DemoSatellite): OrbitalObject {
 
 /** Seed the database with the deterministic DEMO dataset (synthetic objects). */
 export async function ensureDemoSeeded(): Promise<void> {
+  if (process.env.ALLOW_DEMO_DATA !== 'true') return;
   const count = await db.satellite.count({ where: { source: 'SENTINEL-DEMO' } });
   if (count === 0) {
     const { satellites } = buildDemoDataset();
@@ -212,6 +213,58 @@ export async function ensureDemoSeeded(): Promise<void> {
         notes: 'Deterministic synthetic demo dataset',
       },
     });
+  }
+
+  // Add the dedicated crossing-orbit demo pair to existing demo databases
+  // created before that fixture was introduced.
+  const crossingDataset = buildDemoDataset();
+  for (const id of ['EAST-WEST-01', 'NORTH-SOUTH-X']) {
+    if (await db.satellite.findUnique({ where: { id } })) continue;
+    const fixture = crossingDataset.satellites.find(s => s.id === id);
+    if (!fixture) continue;
+    const o = demoToOrbitalObject(fixture);
+    await db.satellite.create({ data: {
+      id: o.catalogId, name: o.name, objectType: o.objectType,
+      intlDes: fixture.intlDes, operationalStatus: o.operationalStatus,
+      meanMotion: o.meanMotion, eccentricity: o.eccentricity, inclination: o.inclination,
+      raan: o.raOfAscendingNode, argPerigee: o.argumentOfPerigee, meanAnomaly: o.meanAnomaly,
+      bstar: o.bstar, revAtEpoch: o.revAtEpoch ?? 0, semiMajorAxisKm: o.semiMajorAxisKm ?? null,
+      perigeeKm: o.perigeeKm ?? null, apogeeKm: o.apogeeKm ?? null,
+      orbitalPeriodMin: o.orbitalPeriodMin ?? null, epoch: new Date(o.epoch), source: o.source,
+      format: o.format, retrievalTime: new Date(o.retrievedAt), rawHash: o.rawDataHash,
+      isProtected: fixture.isProtected,
+    } });
+  }
+
+  const crossingConjunction = await db.conjunction.findFirst({
+    where: { primarySatId: 'EAST-WEST-01', secondarySatId: 'NORTH-SOUTH-X' },
+  });
+  if (!crossingConjunction) {
+    const primary = await db.satellite.findUnique({ where: { id: 'EAST-WEST-01' } });
+    const secondary = await db.satellite.findUnique({ where: { id: 'NORTH-SOUTH-X' } });
+    if (primary && secondary) {
+      const start = new Date();
+      const end = new Date(start.getTime() + 7 * 24 * 3600 * 1000);
+      const result = screen(toOrbitalObject(primary), toOrbitalObject(secondary), start, end, 5);
+      if (result) {
+        const risk = computeRisk(result, primary.epoch, false, secondary.objectType as any, DEFAULT_RISK_WEIGHTS);
+        await db.conjunction.create({ data: {
+          primarySatId: primary.id, secondarySatId: secondary.id, tca: result.tca,
+          minRange: result.minRange, relVelocity: result.relVelocity,
+          screeningStart: start, screeningEnd: end, screeningThreshold: 5,
+          screeningHorizonDays: 7, riskScore: risk.score, riskLevel: risk.level,
+          confidenceScore: 75, confidenceLevel: 'MEDIUM',
+          riskFactorsJson: JSON.stringify(risk.factors),
+          riskWeightsJson: JSON.stringify(DEFAULT_RISK_WEIGHTS),
+          riskModelVersion: RISK_MODEL_VERSION, analysisId: uuidv4(),
+          dataSource: 'SENTINEL-DEMO', primaryEpoch: primary.epoch,
+          secondaryEpoch: secondary.epoch, propagator: SGP4_VERSION,
+          propagatorFrame: SGP4_FRAME, notesJson: '[]', timelineJson: JSON.stringify([
+            { time: result.tca.toISOString(), event: 'TCA', detail: 'East-west / north-south demo crossing' },
+          ]),
+        } });
+      }
+    }
   }
 }
 
@@ -730,7 +783,14 @@ export async function listConjunctions(filter?: {
 }): Promise<ConjunctionDTO[]> {
   await ensureDemoSeeded();
   const where: any = {};
-  if (filter?.primaryId) where.primarySatId = filter.primaryId;
+  if (filter?.primaryId) {
+    // A conjunction is a relationship between two objects. Keep it visible
+    // when the requested satellite is either side of the event.
+    where.OR = [
+      { primarySatId: filter.primaryId },
+      { secondarySatId: filter.primaryId },
+    ];
+  }
   if (filter?.status) where.status = filter.status;
   if (filter?.riskLevel) where.riskLevel = filter.riskLevel;
   // Show conjunctions from the last 24 hours + future (so recently-expired

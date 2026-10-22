@@ -25,6 +25,7 @@ console.log('\n\x1b[1mSENTINEL QA\x1b[0m\n');
 
 run('Lint', 'npx eslint src/');
 run('Typecheck', 'npx tsc --noEmit');
+run('Prisma schema', 'npx prisma validate');
 run('Unit tests', 'node scripts/run-tests.mjs');
 run('Build', 'npx next build');
 

@@ -52,10 +52,10 @@ sudo -u postgres psql -c "CREATE USER sentinel WITH PASSWORD 'password';"
 sudo -u postgres psql -c "CREATE DATABASE sentinel OWNER sentinel;"
 ```
 
-Apply the schema:
+Apply the schema once during provisioning (never from routine application startup):
 
 ```bash
-bun run db:push
+npm run db:push
 ```
 
 This runs `prisma db push` which creates all tables and indexes in `DATABASE.md`. No migration files are needed for the prototype; if you adopt formal migrations, switch to `prisma migrate dev`.
@@ -118,6 +118,10 @@ This populates the SOCRATES comparison table (`SOCRATES_VALIDATION.md`).
 - Run the Next.js process as a non-root user.
 - Bind to `127.0.0.1:3000` only; expose via the reverse proxy with TLS.
 - Do not commit `DATABASE_URL` (or any secret) to git; use `.env.local` or a secret manager.
+- Runtime startup requires a non-`file:` `DATABASE_URL` and never creates a local database or runs schema synchronization.
+- Synthetic demo data is disabled by default. Set `ALLOW_DEMO_DATA=true` only for an explicitly isolated evaluation environment.
+- The current prototype API has no user authentication or authorization layer. Do not expose it publicly until route protection and an operator identity model are added.
+- Rotate any database password that has been shared outside the deployment secret manager before production use.
 - Rate-limit `/api/orbits/refresh` and `/api/screen` per IP if the host is exposed to the public internet — both are expensive.
 
 ## 9. Health Check

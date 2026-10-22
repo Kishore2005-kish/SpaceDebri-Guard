@@ -12,11 +12,14 @@
 //   8. prints the URL
 
 import { execSync, spawn } from 'child_process';
-import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
+import { config as loadEnv } from 'dotenv';
 
 const __dirname = join(fileURLToPath(new URL('.', import.meta.url)), '..');
+loadEnv({ path: join(__dirname, '.env') });
+loadEnv({ path: join(__dirname, '.env.local'), override: true });
 const steps = [];
 
 function logStep(name, status, detail = '') {
@@ -60,35 +63,18 @@ if (!existsSync(join(__dirname, 'node_modules', 'next'))) {
   logStep('Dependencies verified', 'ok');
 }
 
-// 4. Verify .env
-const envPath = join(__dirname, '.env');
-if (!existsSync(envPath)) {
-  // Create default .env
-  const dbDir = join(__dirname, 'db');
-  if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
-  const defaultEnv = 'DATABASE_URL="file:' + join(__dirname, 'db', 'custom.db') + '"\n';
-  const { writeFileSync } = await import('fs');
-  writeFileSync(envPath, defaultEnv);
-  logStep('.env created', 'ok', 'default SQLite database');
-} else {
-  logStep('.env verified', 'ok');
+// 4. Verify database configuration. Startup must never create a local database
+// or mutate a remote schema. Apply schema changes through a reviewed migration.
+const databaseUrl = process.env.DATABASE_URL ?? '';
+if (!databaseUrl) {
+  logStep('Database configuration', 'fail', 'DATABASE_URL is required');
+  process.exit(1);
 }
-
-// 5. Verify database
-const dbPath = join(__dirname, 'db', 'custom.db');
-if (!existsSync(dbPath)) {
-  logStep('Database', 'warn', 'not found — will be created');
-} else {
-  logStep('Database ready', 'ok');
+if (databaseUrl.startsWith('file:')) {
+  logStep('Database configuration', 'fail', 'Local SQLite is not allowed for runtime startup');
+  process.exit(1);
 }
-
-// 6. Run schema setup
-try {
-  execSync('npx prisma db push --accept-data-loss', { cwd: __dirname, stdio: 'pipe' });
-  logStep('Schema ready', 'ok');
-} catch {
-  logStep('Schema setup', 'warn', 'may need manual run: npx prisma db push');
-}
+logStep('Database configuration', 'ok', 'PostgreSQL connection configured');
 
 // 6b. Start space weather FastAPI backend
 console.log('\n\x1b[1mStarting Space Weather Backend...\x1b[0m\n');
