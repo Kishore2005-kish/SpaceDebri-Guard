@@ -249,6 +249,22 @@ export function buildDemoDataset(now: Date = new Date()): {
     a: 6958.137, e: 0.0021, inc: 51.6, raan: 80.0, omega: 110.0,
   }, epoch);
 
+  // Dedicated orbit-plane crossing example for the Sentinel demo. The
+  // protected object travels almost east-west while the secondary uses a
+  // steep crossing plane, so the two complete orbit tracks are visibly
+  // different even though they meet at the generated TCA.
+  const eastWestElements: OrbitalElements = buildElements({
+    a: 6878.137, e: 0.001, inc: 2.0, raan: 10.0, omega: 0.0,
+  }, epoch);
+  const crossingTca = new Date(now.getTime() + 36 * 3600 * 1000);
+  const northSouthElements = buildCrossingSecondary(
+    eastWestElements,
+    { catalogId: 'EAST-WEST-01', name: 'East-West-01', objectType: 'PAYLOAD' },
+    0.25,
+    90,
+    crossingTca,
+  );
+
   // --- Showcase conjunction (TCA = 72h from now) ----------------------------
   const targetTca = new Date(now.getTime() + 72 * 3600 * 1000);
   const debris01Elements = buildCrossingSecondary(
@@ -341,6 +357,8 @@ export function buildDemoDataset(now: Date = new Date()): {
     mk('MYSAT-01', 'MySat-01', '2026-041A', 'PAYLOAD', true, mySat01Elements),
     mk('MYSAT-02', 'MySat-02', '2026-041B', 'PAYLOAD', true, mySat02Elements),
     mk('MYSAT-03', 'MySat-03', '2026-041C', 'PAYLOAD', true, mySat03Elements),
+    mk('EAST-WEST-01', 'East-West-01', '2026-041D', 'PAYLOAD', true, eastWestElements),
+    mk('NORTH-SOUTH-X', 'North-South-X', '2026-041E', 'DEBRIS', false, northSouthElements),
     mk('DBR-2841', 'Debris-2841', '2009-019BG', 'DEBRIS', false, debris01Elements),
     mk('DBR-5523', 'Debris-5523', '2014-019F', 'DEBRIS', false, debris02Elements),
     mk('RB-CZ2C', 'CZ-2C R/B', '2018-052D', 'ROCKET_BODY', false, rb01Elements),
@@ -353,4 +371,3 @@ export function buildDemoDataset(now: Date = new Date()): {
     showcaseSecondaryId: 'DBR-2841',
   };
 }
-

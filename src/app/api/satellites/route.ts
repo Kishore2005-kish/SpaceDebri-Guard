@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listSatellites, registerSatellite, refreshFromCelesTrak, ensureDemoSeeded } from '@/lib/services';
+import { listSatellites, listDemoSatellitesFallback, registerSatellite, refreshFromCelesTrak, ensureDemoSeeded } from '@/lib/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,13 @@ export async function GET(req: Request) {
   const source = url.searchParams.get('source') ?? undefined;
   const objectType = url.searchParams.get('type');
   const query = url.searchParams.get('q')?.toLowerCase();
-  let sats = await listSatellites(protectedOnly === '1' ? true : undefined, source);
+  let sats;
+  try {
+    sats = await listSatellites(protectedOnly === '1' ? true : undefined, source);
+  } catch (error) {
+    console.warn('Satellite database unavailable; returning synthetic demo catalog.', error);
+    sats = listDemoSatellitesFallback(protectedOnly === '1' ? true : undefined, source);
+  }
   if (objectType) sats = sats.filter(s => s.objectType === objectType);
   if (query) sats = sats.filter(s => s.name.toLowerCase().includes(query) || s.id.toLowerCase().includes(query));
   return NextResponse.json({ satellites: sats });

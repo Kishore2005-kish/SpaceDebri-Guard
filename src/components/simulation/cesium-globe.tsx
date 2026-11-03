@@ -108,6 +108,13 @@ export function CesiumGlobe({
             })
           );
           viewer.scene.globe.enableLighting = true;
+          // Keep the Earth visible even when external imagery tiles are
+          // blocked/offline. The previous configuration disabled Cesium's
+          // base layer, leaving only a black star field behind the tracks.
+          viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#12304a');
+          viewer.scene.globe.showGroundAtmosphere = true;
+          if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
+          viewer.scene.globe.depthTestAgainstTerrain = false;
           setReady(true);
         } catch (e) {
           console.error('Cesium init failed:', e);
@@ -211,11 +218,25 @@ export function CesiumGlobe({
     // Orbit tracks
     viewer.entities.add({
       name: `${primaryName} Orbit`,
-      polyline: { positions: primaryTrajectory.map(toCartesian3), width: 1.5, material: Cesium.Color.fromCssColorString('rgba(94, 230, 149, 0.5)') },
+      // The demo samples include an intentional near-coincident TCA pair.
+      // Disable Cesium's geodesic arc subdivision so it does not derive an
+      // invalidly tiny granularity from that close approach.
+      polyline: { arcType: Cesium.ArcType.NONE, positions: primaryTrajectory.map(toCartesian3), width: 1.5, material: Cesium.Color.fromCssColorString('rgba(94, 230, 149, 0.5)') },
     });
     viewer.entities.add({
       name: `${secondaryName} Orbit`,
-      polyline: { positions: secondaryTrajectory.map(toCartesian3), width: 1.5, material: Cesium.Color.fromCssColorString('rgba(255, 180, 80, 0.5)') },
+      // Keep the secondary on its propagated orbit, but use a dashed amber
+      // track so co-orbital objects (for example ISS and Poisk) remain
+      // visually distinguishable when their paths overlap.
+      polyline: {
+        arcType: Cesium.ArcType.NONE,
+        positions: secondaryTrajectory.map(toCartesian3),
+        width: 3,
+        material: new Cesium.PolylineDashMaterialProperty({
+          color: Cesium.Color.fromCssColorString('#ffb450').withAlpha(0.95),
+          dashLength: 18,
+        }),
+      },
     });
 
     // TCA — find nearest sample by timestamp
@@ -238,22 +259,26 @@ export function CesiumGlobe({
       const sPos = toCartesian3(secondaryTrajectory[nearestSIdx]);
       viewer.entities.add({
         name: 'Minimum Separation',
-        polyline: { positions: [pPos, sPos], width: 2, material: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.2, color: Cesium.Color.fromCssColorString('#ff5050') }) },
+        polyline: { arcType: Cesium.ArcType.NONE, positions: [pPos, sPos], width: 2, material: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.2, color: Cesium.Color.fromCssColorString('#ff5050') }) },
         label: { text: minimumRangeKm < 1 ? `${(minimumRangeKm * 1000).toFixed(0)} m` : `${minimumRangeKm.toFixed(3)} km`, font: 'bold 14px monospace', fillColor: Cesium.Color.fromCssColorString('#ff5050'), outlineColor: Cesium.Color.BLACK, outlineWidth: 2, style: Cesium.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cesium.Cartesian2(20, -20) },
       });
 
-      const mid = Cesium.Cartesian3.lerp(pPos, sPos, 0.5, new Cesium.Cartesian3());
-      if (mid) {
-        viewer.entities.add({
-          name: 'TCA', position: mid,
+      // Anchor the TCA marker to the primary spacecraft's propagated
+      // position. The midpoint of two ECI positions can fall deep inside
+      // Earth when the fallback tracks cross on opposite sides of the globe,
+      // which made TCA appear in the globe's interior instead of at the
+      // encounter location.
+      viewer.entities.add({
+          name: 'TCA', position: pPos,
           point: { pixelSize: 10, color: Cesium.Color.fromCssColorString('#ff5050').withAlpha(0.5), outlineColor: Cesium.Color.fromCssColorString('#ff5050'), outlineWidth: 2 },
           label: { text: 'TCA', font: 'bold 12px monospace', fillColor: Cesium.Color.fromCssColorString('#ff5050'), outlineColor: Cesium.Color.BLACK, outlineWidth: 2, style: Cesium.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cesium.Cartesian2(20, -25) },
-        });
-      }
+      });
     }
 
     // Fly to full Earth
-    viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(0, 0, 20000000), duration: 2 });
+    // Frame the Earth and the LEO tracks together; 20,000 km placed the
+    // surface too small/dark to distinguish on some displays.
+    viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(0, 0, 12000000), duration: 2 });
 
     // Tick callback — reads live state from refs so it never goes stale.
     const tickFn = (clock: CesiumType.Clock) => {

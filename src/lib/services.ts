@@ -446,6 +446,62 @@ export async function listSatellites(filterProtected?: boolean, source?: string)
   return sats.map(toDTO);
 }
 
+// Read-only fallback for local demos when the configured remote database is
+// unavailable. It keeps the catalog view useful without pretending the data
+// is live.
+export function listDemoSatellitesFallback(filterProtected?: boolean, source?: string): SatelliteDTO[] {
+  const { satellites } = buildDemoDataset();
+  return satellites
+    .filter(s => filterProtected !== true || s.isProtected)
+    .filter(s => !source || source === s.source)
+    .map(s => ({
+      id: s.id, name: s.name, intlDes: s.intlDes, objectType: s.objectType,
+      operationalStatus: 'SYNTHETIC-DEMO-OBJECT', isProtected: s.isProtected,
+      epoch: s.elements.epoch.toISOString(), meanMotion: s.elements.meanMotion,
+      eccentricity: s.elements.eccentricity, inclination: s.elements.inclination,
+      raan: s.elements.raan, argPerigee: s.elements.argPerigee,
+      meanAnomaly: s.elements.meanAnomaly, bstar: s.elements.bstar,
+      semiMajorAxisKm: null, perigeeKm: null, apogeeKm: null, orbitalPeriodMin: null,
+      source: s.source, format: s.format, retrievalTime: new Date().toISOString(),
+      rawHash: s.rawHash, isSynthetic: true,
+    }));
+}
+
+export function listDemoConjunctionsFallback(primaryId?: string): ConjunctionDTO[] {
+  const pairs = [
+    ['MYSAT-01', 'DBR-2841', 'MySat-01', 'Debris-2841', 'DEBRIS', 18, 0.15, 9.8, 92, 'CRITICAL'],
+    ['EAST-WEST-01', 'NORTH-SOUTH-X', 'East-West-01', 'North-South-X', 'DEBRIS', 36, 0.25, 7.4, 84, 'HIGH'],
+    ['MYSAT-02', 'DBR-5523', 'MySat-02', 'Debris-5523', 'DEBRIS', 54, 0.40, 6.1, 76, 'HIGH'],
+    ['MYSAT-03', 'RB-CZ2C', 'MySat-03', 'CZ-2C R/B', 'ROCKET_BODY', 72, 0.85, 4.7, 68, 'MODERATE'],
+    ['MYSAT-01', 'DBR-7711', 'MySat-01', 'Debris-7711', 'DEBRIS', 96, 1.70, 5.9, 61, 'MODERATE'],
+    ['MYSAT-02', 'STARLINK-3011', 'MySat-02', 'Starlink-3011', 'PAYLOAD', 120, 3.40, 3.2, 55, 'LOW'],
+  ] as const;
+  const now = Date.now();
+  return pairs
+    .filter(([primary]) => !primaryId || primary === primaryId)
+    .map(([primarySatId, secondarySatId, primaryName, secondaryName, secondaryObjectType, hours, minRange, relVelocity, confidenceScore, riskLevel], index) => {
+      const tca = new Date(now + hours * 3600 * 1000).toISOString();
+      return {
+        id: `DEMO-CONJ-${index + 1}`, primarySatId, secondarySatId, primaryName, secondaryName,
+        secondaryObjectType, tca, minRange, relVelocity, riskScore: riskLevel === 'CRITICAL' ? 92 : riskLevel === 'HIGH' ? 78 : riskLevel === 'MODERATE' ? 54 : 28,
+        riskLevel, confidenceScore, confidenceLevel: confidenceScore >= 75 ? 'HIGH' : 'MEDIUM',
+        confidenceContributors: ['Synthetic demo fallback'], riskFactors: [], riskWeights: DEFAULT_RISK_WEIGHTS,
+        riskModelVersion: RISK_MODEL_VERSION, covarianceAvailable: false,
+        explanation: 'Synthetic demo conjunction with deliberately varied orbital geometry.',
+        disclaimer: 'Prototype heuristic risk score, not official collision probability.', status: 'NEW', notes: [],
+        timeline: [{ time: tca, event: 'TCA', detail: `Miss distance ${minRange.toFixed(2)} km` }],
+        screeningStart: new Date(now).toISOString(), screeningEnd: new Date(now + 7 * 86400000).toISOString(),
+        screeningThreshold: 5, screeningHorizonDays: 7, propagationHorizonHours: hours,
+        analysisId: `demo-analysis-${index + 1}`, dataSource: 'SENTINEL-DEMO', retrievedAt: new Date(now).toISOString(),
+        primaryEpoch: null, secondaryEpoch: null, propagator: SGP4_VERSION, propagatorFrame: SGP4_FRAME,
+        snapshotId: null, dataAgeHours: 0, separationSeries: [],
+        relPosRic: { radial: 0, alongTrack: 0, crossTrack: 0 },
+        primaryState: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 },
+        secondaryState: { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 },
+      } as ConjunctionDTO;
+    });
+}
+
 export async function getSatellite(id: string): Promise<SatelliteDTO | null> {
   await ensureDemoSeeded();
   const s = await db.satellite.findUnique({ where: { id: String(id) } });

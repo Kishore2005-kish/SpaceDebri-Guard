@@ -86,6 +86,88 @@ interface ConjunctionInfo {
   dataSource: string;
 }
 
+function createDemoSimulationResult(event: ConjunctionInfo): SimResult {
+  const tca = new Date(event.tca).getTime();
+  const primaryTrajectory: TrajectoryPoint[] = [];
+  const secondaryTrajectory: TrajectoryPoint[] = [];
+
+  // Keep the fallback deterministic, but make each conjunction visually
+  // distinct. Previously every event reused the exact same equatorial /
+  // polar pair, which made unrelated conjunctions look identical.
+  let seed = 2166136261;
+  for (const char of `${event.primarySatId}:${event.secondarySatId}`) {
+    seed ^= char.charCodeAt(0);
+    seed = Math.imul(seed, 16777619);
+  }
+  const unit = (value: number) => (value >>> 0) / 4294967296;
+  const phase = unit(seed) * Math.PI * 2;
+  const primaryRadius = 6800 + unit(Math.imul(seed, 59)) * 260;
+  const encounterLatitude = (-0.65 + unit(Math.imul(seed, 31)) * 1.3);
+  const crossingAngle = (35 + unit(Math.imul(seed, 47)) * 75) * Math.PI / 180;
+  const magnitude = (v: [number, number, number]) => Math.hypot(v[0], v[1], v[2]);
+  const normalize = (v: [number, number, number]): [number, number, number] => {
+    const length = magnitude(v);
+    return [v[0] / length, v[1] / length, v[2] / length];
+  };
+  const cross = (a: [number, number, number], b: [number, number, number]): [number, number, number] => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+
+  // Both circular-orbit planes pass through this TCA direction. Rotating the
+  // secondary tangent vector creates a genuinely different plane while
+  // guaranteeing a smooth, close encounter instead of a line segment that
+  // jumps to a manually inserted point.
+  const radialAtTca: [number, number, number] = [
+    Math.cos(encounterLatitude) * Math.cos(phase),
+    Math.cos(encounterLatitude) * Math.sin(phase),
+    Math.sin(encounterLatitude),
+  ];
+  const primaryTangent = normalize(cross([0, 0, 1], radialAtTca));
+  const planeNormal = cross(radialAtTca, primaryTangent);
+  const secondaryTangent: [number, number, number] = normalize([
+    primaryTangent[0] * Math.cos(crossingAngle) + planeNormal[0] * Math.sin(crossingAngle),
+    primaryTangent[1] * Math.cos(crossingAngle) + planeNormal[1] * Math.sin(crossingAngle),
+    primaryTangent[2] * Math.cos(crossingAngle) + planeNormal[2] * Math.sin(crossingAngle),
+  ]);
+  const primaryAngularRate = Math.sqrt(398600.4418 / primaryRadius ** 3);
+  const secondaryRadius = primaryRadius + event.minRange;
+  const secondaryAngularRate = Math.sqrt(398600.4418 / secondaryRadius ** 3);
+
+  const separationSeries: { t: string; range: number }[] = [];
+  for (let i = 0; i <= 24; i++) {
+    const offset = (i - 12) * 300;
+    const t = new Date(tca + offset * 1000).toISOString();
+    const primaryAngle = primaryAngularRate * offset;
+    const secondaryAngle = secondaryAngularRate * offset;
+    const pCos = Math.cos(primaryAngle), pSin = Math.sin(primaryAngle);
+    const sCos = Math.cos(secondaryAngle), sSin = Math.sin(secondaryAngle);
+    const px = primaryRadius * (radialAtTca[0] * pCos + primaryTangent[0] * pSin);
+    const py = primaryRadius * (radialAtTca[1] * pCos + primaryTangent[1] * pSin);
+    const pz = primaryRadius * (radialAtTca[2] * pCos + primaryTangent[2] * pSin);
+    const sx = secondaryRadius * (radialAtTca[0] * sCos + secondaryTangent[0] * sSin);
+    const sy = secondaryRadius * (radialAtTca[1] * sCos + secondaryTangent[1] * sSin);
+    const sz = secondaryRadius * (radialAtTca[2] * sCos + secondaryTangent[2] * sSin);
+    const pv = primaryRadius * primaryAngularRate;
+    const sv = secondaryRadius * secondaryAngularRate;
+    primaryTrajectory.push({ t, x: px, y: py, z: pz, vx: pv * (-radialAtTca[0] * pSin + primaryTangent[0] * pCos), vy: pv * (-radialAtTca[1] * pSin + primaryTangent[1] * pCos), vz: pv * (-radialAtTca[2] * pSin + primaryTangent[2] * pCos) });
+    secondaryTrajectory.push({ t, x: sx, y: sy, z: sz, vx: sv * (-radialAtTca[0] * sSin + secondaryTangent[0] * sCos), vy: sv * (-radialAtTca[1] * sSin + secondaryTangent[1] * sCos), vz: sv * (-radialAtTca[2] * sSin + secondaryTangent[2] * sCos) });
+    separationSeries.push({ t, range: Math.hypot(sx - px, sy - py, sz - pz) });
+  }
+  return {
+    engine: 'SENTINEL SGP4 (demo fallback)', engineVersion: 'demo-local',
+    primary: { catalogId: event.primarySatId, name: event.primaryName },
+    secondary: { catalogId: event.secondarySatId, name: event.secondaryName, objectType: event.secondaryObjectType },
+    tca: event.tca, minimumRangeKm: event.minRange, minimumSeparationKm: event.minRange,
+    relativeVelocityKmPerSec: event.relVelocity, thresholdKm: 5,
+    analysisStart: new Date(tca - 3600000).toISOString(), analysisEnd: new Date(tca + 3600000).toISOString(),
+    primaryTrajectory, secondaryTrajectory, separationSeries,
+    covarianceAvailable: false, collisionProbabilityAvailable: false,
+    fallbackReason: 'Database unavailable; rendered deterministic demo trajectory.',
+  };
+}
+
 const STATUS_LABELS: Record<string, string> = {
   QUEUED: 'Queued — waiting to start',
   STARTING_STK: 'Starting STK…',
@@ -180,11 +262,28 @@ export function SimulationView({ conjunctionId, onClose }: { conjunctionId: stri
         };
         poll();
       } else {
+        if (conjunction) {
+          const demoResult = createDemoSimulationResult(conjunction);
+          setSimResult(demoResult);
+          setSimRun({ id: `demo-${conjunctionId}`, status: 'COMPLETE', engine: demoResult.engine, engineVersion: demoResult.engineVersion, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), scenarioId: null, error: null });
+          setLoading(false);
+          setRunning(false);
+          toast({ title: 'Demo simulation displayed', description: 'Using the local deterministic trajectory.' });
+          return;
+        }
         throw new Error(j.error || 'Failed to start simulation');
       }
     } catch (e: any) {
       setRunning(false);
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+      if (conjunction) {
+        const demoResult = createDemoSimulationResult(conjunction);
+        setSimResult(demoResult);
+        setSimRun({ id: `demo-${conjunctionId}`, status: 'COMPLETE', engine: demoResult.engine, engineVersion: demoResult.engineVersion, startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), scenarioId: null, error: null });
+        setLoading(false);
+        toast({ title: 'Demo simulation displayed', description: 'The database simulation service is unavailable; showing local trajectory.' });
+      } else {
+        toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+      }
     }
   };
 

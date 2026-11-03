@@ -267,7 +267,7 @@ async function runAnalysisAsync(analysisId: string, config: AnalysisConfig): Pro
 
     // Get primaries
     let primaries;
-    if (config.primaryId && !(isDemo && config.primaryId === '25544')) {
+    if (config.primaryId && config.primaryId !== 'ALL_PROTECTED' && !(isDemo && config.primaryId === '25544')) {
       const primaryWhere: any = { id: config.primaryId };
       if (isDemo) primaryWhere.source = 'SENTINEL-DEMO';
       primaries = await db.satellite.findMany({ where: primaryWhere });

@@ -13,7 +13,6 @@ import { ConjunctionsView } from '@/components/conjunction/conjunctions-view';
 import { useUI } from '@/lib/store';
 
 // Space Weather imports
-import { SpaceWeatherProvider } from '../context/SpaceWeatherContext';
 import { WeatherDashboardView } from '../components/weather/views/WeatherDashboardView';
 import { WeatherLiveView } from '../components/weather/views/WeatherLiveView';
 import { WeatherHistoryView } from '../components/weather/views/WeatherHistoryView';
@@ -24,8 +23,7 @@ export default function Home() {
   const { view, simulationConjunctionId, closeSimulation } = useUI();
 
   return (
-    <SpaceWeatherProvider>
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
         <TopBar />
         <div className="flex flex-1 min-h-0">
           <Sidebar />
@@ -54,7 +52,6 @@ export default function Home() {
           <span>SENTINEL — Conjunction Awareness (PS-04.3)</span>
           <span className="text-amber-500/80">Simulation only — not a flight command.</span>
         </footer>
-      </div>
-    </SpaceWeatherProvider>
+    </div>
   );
 }

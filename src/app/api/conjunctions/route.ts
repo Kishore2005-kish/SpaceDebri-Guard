@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listConjunctions } from '@/lib/services';
+import { listConjunctions, listDemoConjunctionsFallback } from '@/lib/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,13 @@ export async function GET(req: Request) {
   const maxDistance = url.searchParams.get('maxDistance') ? parseFloat(url.searchParams.get('maxDistance')!) : undefined;
   const type = url.searchParams.get('type') ?? undefined;
   const minConf = url.searchParams.get('minConf') ? parseInt(url.searchParams.get('minConf')!, 10) : undefined;
-  let conj = await listConjunctions({ primaryId, status, riskLevel });
+  let conj;
+  try {
+    conj = await listConjunctions({ primaryId, status, riskLevel });
+  } catch (error) {
+    console.warn('Conjunction database unavailable; returning synthetic demo events.', error);
+    conj = listDemoConjunctionsFallback(primaryId);
+  }
   if (minRisk !== undefined) conj = conj.filter(c => c.riskScore >= minRisk);
   if (maxDistance !== undefined) conj = conj.filter(c => c.minRange <= maxDistance);
   if (type) conj = conj.filter(c => c.secondaryObjectType === type);

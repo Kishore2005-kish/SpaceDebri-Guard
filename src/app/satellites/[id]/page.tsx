@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Satellite as SatelliteIcon, Shield } from 'lucide-react';
+import { ArrowLeft, Loader2, Satellite as SatelliteIcon, Shield, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useUI } from '@/lib/store';
+import { useSpaceWeather } from '@/context/SpaceWeatherContext';
 
 interface Satellite {
   id: string;
@@ -70,6 +71,7 @@ export default function SatelliteOverviewPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { selectSatellite, setView } = useUI();
+  const { profile } = useSpaceWeather();
   const [satellite, setSatellite] = useState<Satellite | null>(null);
   const [conjunctions, setConjunctions] = useState<Conjunction[]>([]);
   const [conjunctionLoading, setConjunctionLoading] = useState(true);
@@ -129,6 +131,10 @@ export default function SatelliteOverviewPage() {
     router.push('/');
   };
 
+  const openConjunctionSimulation = (conjunctionId: string) => {
+    useUI.getState().openSimulation(conjunctionId);
+  };
+
   const closestConjunction = conjunctions.length > 0
     ? conjunctions.reduce((closest, current) => current.minRange < closest.minRange ? current : closest)
     : null;
@@ -174,7 +180,16 @@ export default function SatelliteOverviewPage() {
           <Card className="p-5"><h2 className="mb-3 font-mono text-sm font-bold uppercase tracking-wider">Data Source / Freshness</h2>
             <Value label="Source" value={satellite.source} /><Value label="Format" value={satellite.format} /><Value label="Retrieval time" value={formatDate(satellite.retrievalTime)} /><Value label="Orbital data age" value={dataAge} /><Value label="Raw data hash" value={satellite.rawHash} />
           </Card>
-          <Card className="p-5"><h2 className="mb-3 font-mono text-sm font-bold uppercase tracking-wider">Space Weather Risk</h2><p className="text-sm text-muted-foreground">Satellite-specific SpaceGuard analysis is not yet integrated.</p></Card>
+          <Card className="p-5"><h2 className="mb-3 font-mono text-sm font-bold uppercase tracking-wider">Space Weather Risk</h2>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs font-mono">
+              <Value label="Overall status" value={profile.prediction?.riskLevel ?? profile.status} />
+              <Value label="Kp index" value={profile.weather.kpIndex.value} />
+              <Value label="X-ray flux" value={profile.weather.xrayFlux.value} />
+              <Value label="Proton flux" value={profile.weather.protonFlux.value} />
+              <Value label="Solar wind" value={profile.weather.windSpeed} />
+              <Value label="Provider" value={profile.databaseStatus} />
+            </div>
+          </Card>
           <Card className="p-5 lg:col-span-2">
             <h2 className="mb-3 font-mono text-sm font-bold uppercase tracking-wider">Conjunction Risk</h2>
             {conjunctionLoading && <p className="text-sm text-muted-foreground">Loading existing conjunction results…</p>}
@@ -192,10 +207,17 @@ export default function SatelliteOverviewPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="border-b border-border text-[10px] uppercase text-muted-foreground"><tr><th className="px-2 py-2">Secondary</th><th className="px-2 py-2">TCA</th><th className="px-2 py-2">Miss distance</th><th className="px-2 py-2">Rel velocity</th><th className="px-2 py-2">Risk</th><th className="px-2 py-2">Analysis</th></tr></thead>
-                    <tbody>{conjunctions.map(c => <tr key={c.id} className="border-b border-border/50"><td className="px-2 py-2"><div className="font-mono">{c.secondaryName}</div><div className="text-[10px] text-muted-foreground">{c.secondarySatId} · {c.secondaryObjectType}</div></td><td className="px-2 py-2 font-mono">{formatDate(c.tca)}</td><td className="px-2 py-2 font-mono">{c.minRange.toFixed(2)} km</td><td className="px-2 py-2 font-mono">{c.relVelocity.toFixed(2)} km/s</td><td className="px-2 py-2 font-mono">{c.riskLevel}</td><td className="px-2 py-2 text-[10px] text-muted-foreground">{formatDate(c.retrievedAt)}</td></tr>)}</tbody>
+                    <tbody>{conjunctions.map(c => {
+                      const counterpart = c.primarySatId === satellite.id
+                        ? { id: c.secondarySatId, name: c.secondaryName, type: c.secondaryObjectType }
+                        : { id: c.primarySatId, name: c.primaryName, type: 'PAYLOAD' };
+                      return <tr key={c.id} onClick={() => openConjunctionSimulation(c.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') openConjunctionSimulation(c.id); }} tabIndex={0} role="button" className="border-b border-border/50 cursor-pointer hover:bg-muted/30 focus:bg-muted/30">
+                        <td className="px-2 py-2"><div className="font-mono">{counterpart.name}</div><div className="text-[10px] text-muted-foreground">{counterpart.id} · {counterpart.type}</div></td><td className="px-2 py-2 font-mono">{formatDate(c.tca)}</td><td className="px-2 py-2 font-mono">{c.minRange.toFixed(2)} km</td><td className="px-2 py-2 font-mono">{c.relVelocity.toFixed(2)} km/s</td><td className="px-2 py-2 font-mono">{c.riskLevel}</td><td className="px-2 py-2 text-[10px] text-primary"><ExternalLink className="inline h-3 w-3 mr-1" />OPEN SIMULATION</td>
+                      </tr>;
+                    })}</tbody>
                   </table>
                 </div>
-                <p className="mt-3 text-[10px] text-muted-foreground">Existing conjunction records filtered by primary catalog ID {satellite.id}. Risk values use the existing conjunction analysis; no new score is calculated here.</p>
+                <p className="mt-3 text-[10px] text-muted-foreground">Events are shown when {satellite.name} is either the primary or secondary object. Select an event to open its simulation.</p>
               </>
             )}
           </Card>

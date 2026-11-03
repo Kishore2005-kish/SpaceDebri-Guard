@@ -84,33 +84,28 @@ export const WeatherLiveView = () => {
     }
   };
 
-  const aiSuggestionsForRisk = (riskLevel?: string) => {
-    switch (riskLevel?.toUpperCase()) {
-      case 'CRITICAL':
-        return [
-          'Place spacecraft in storm-safe mode and defer all non-essential maneuvers.',
-          'Increase tracking cadence for active satellites and verify command uplink availability.',
-          'Protect payloads and radiation-sensitive systems until proton and x-ray levels recover.'
-        ];
-      case 'HIGH':
-        return [
-          'Prepare safe-mode procedures for exposed spacecraft and review maneuver windows.',
-          'Monitor proton flux, x-ray flux, and solar wind speed at shortened intervals.',
-          'Delay sensitive calibration, deployment, or high-risk communication operations.'
-        ];
-      case 'MEDIUM':
-        return [
-          'Continue enhanced monitoring and keep operations teams aware of changing conditions.',
-          'Avoid scheduling optional precision maneuvers during the disturbance window.',
-          'Validate recent telemetry for drag-related orbit changes in low Earth orbit assets.'
-        ];
-      default:
-        return [
-          'Maintain routine monitoring of solar and geomagnetic telemetry.',
-          'Keep automated alerts enabled in case proton flux or solar wind speed rises.',
-          'Proceed with nominal operations while preserving normal contingency readiness.'
-        ];
-    }
+  const aiSuggestionsForRisk = (prediction: PredictionResult, weather: Required<PredictionParams>) => {
+    const score = Number(prediction.risk_score) || 0;
+    const speed = Number(weather.speed) || 0;
+    const kp = Number(weather.kp_index) || 0;
+    const proton = Number(weather.proton_flux) || 0;
+    const xray = Number(weather.xray_flux) || 0;
+    const suggestions: string[] = [];
+
+    if (score >= 85) suggestions.push('Enter storm-response posture and defer non-essential maneuvers until the forecast improves.');
+    else if (score >= 65) suggestions.push('Prepare contingency procedures and shorten the review window for upcoming spacecraft operations.');
+    else if (score >= 35) suggestions.push('Use enhanced monitoring for the next operations window and review any time-sensitive activity.');
+    else suggestions.push('Continue nominal operations while keeping the normal space-weather alert chain active.');
+
+    if (kp >= 7) suggestions.push(`Geomagnetic activity is severe (Kp ${kp.toFixed(1)}); protect navigation, communications, and attitude-sensitive operations.`);
+    else if (kp >= 5) suggestions.push(`Kp ${kp.toFixed(1)} indicates disturbed geomagnetic conditions; increase telemetry review around orbital operations.`);
+    else suggestions.push(`Kp ${kp.toFixed(1)} is currently below storm levels; keep routine geomagnetic monitoring enabled.`);
+
+    if (proton >= 10 || xray >= 1e-5) suggestions.push('Elevated particle or X-ray flux warrants radiation-sensitive payload checks and a command-uplink readiness review.');
+    else if (speed >= 650) suggestions.push(`Solar-wind speed is elevated at ${speed.toFixed(0)} km/s; check drag and communications margins for low-orbit assets.`);
+    else suggestions.push('Particle flux and solar-wind inputs are not at the strongest thresholds; preserve routine payload and telemetry checks.');
+
+    return suggestions;
   };
 
   const inputRanges: Partial<Record<keyof PredictionParams, { min: number; max: number; hint: string }>> = {
@@ -580,7 +575,7 @@ export const WeatherLiveView = () => {
 
                 <div className="space-y-2 border-t border-slate-800 pt-3">
                   <h3 className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">AI Suggestions</h3>
-                  {aiSuggestionsForRisk(manualPrediction.risk_level).map((suggestion) => (
+                  {aiSuggestionsForRisk(manualPrediction, manualWeather).map((suggestion) => (
                     <div key={suggestion} className="flex gap-2 text-xs text-slate-300 leading-relaxed">
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400"></span>
                       <span>{suggestion}</span>

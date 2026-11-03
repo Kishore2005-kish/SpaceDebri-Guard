@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,7 +70,7 @@ TRAINING_HISTORY = preprocess_space_weather_frame(load_training_data(TRAINING_DA
 
 def fetch_json(url):
     output = subprocess.check_output(
-        ["curl", "-fsSL", "--max-time", "10", "-A", "SpaceGuard-ai/1.0", url],
+        ["curl", "-fsSL", "--connect-timeout", "2", "--max-time", "4", "-A", "SpaceGuard-ai/1.0", url],
         text=True,
     )
     return json.loads(output)
@@ -132,11 +133,20 @@ def status_for_risk_level(risk_level):
 
 
 def latest_live_reading():
-    xrays = fetch_json(NOAA_ENDPOINTS["xrays"])
-    protons = fetch_json(NOAA_ENDPOINTS["protons"])
-    kp = fetch_json(NOAA_ENDPOINTS["kp"])
-    mag = fetch_json(NOAA_ENDPOINTS["mag"])
-    wind = fetch_json(NOAA_ENDPOINTS["wind"])
+    # NOAA feeds are independent. Fetching them concurrently keeps one
+    # unreachable endpoint from blocking the whole API for 20+ seconds.
+    with ThreadPoolExecutor(max_workers=len(NOAA_ENDPOINTS)) as executor:
+        futures = {
+            name: executor.submit(fetch_json, endpoint)
+            for name, endpoint in NOAA_ENDPOINTS.items()
+        }
+        feeds = {name: future.result() for name, future in futures.items()}
+
+    xrays = feeds["xrays"]
+    protons = feeds["protons"]
+    kp = feeds["kp"]
+    mag = feeds["mag"]
+    wind = feeds["wind"]
 
     xray = latest_record(
         xrays,
@@ -177,6 +187,29 @@ def latest_live_reading():
             "mag": mag_record.get("time_tag"),
             "wind": wind_record.get("time_tag"),
         },
+    }
+
+
+def cached_reading():
+    """Return the newest bundled observation when NOAA is unreachable."""
+    training = load_training_data(TRAINING_DATA_PATH)
+    row = training.iloc[-1]
+    # The inference pipeline appends the live row to training history and
+    # requires a unique timestamp for its resampling step.
+    last_date = pd.to_datetime(row.get("date"), errors="coerce")
+    date = (last_date + pd.Timedelta(days=1)).isoformat() if not pd.isna(last_date) else pd.Timestamp.utcnow().isoformat()
+    return {
+        "date": date,
+        "proton_flux": float(row.get("proton_flux", 0.22)),
+        "xray_flux": float(row.get("xray_flux", 1.2e-8)),
+        "kp_index": float(row.get("kp_index", 2.0)),
+        "bz": float(row.get("bz", 1.0)),
+        "sw_speed": float(row.get("sw_speed", 310.0)),
+        "density": 1.8,
+        "temperature": 144000.0,
+        "bt": 0.0,
+        "source": "bundled training data",
+        "times": {key: date for key in ("xray", "proton", "kp", "mag", "wind")},
     }
 
 
@@ -267,7 +300,13 @@ def override_manual_features(features, feature_row, data):
 
 
 def build_live_prediction():
-    reading = latest_live_reading()
+    try:
+        reading = latest_live_reading()
+        source = "trained_model"
+    except Exception as error:
+        print(f"NOAA feeds unavailable; using bundled cached reading: {error}")
+        reading = cached_reading()
+        source = "cached"
     live_df = preprocess_space_weather_frame(live_reading_to_frame(reading))
     features, feature_row = build_inference_matrix(TRAINING_HISTORY, live_df)
     risk_level, confidence, class_probabilities = predict_from_features(features)
@@ -279,6 +318,7 @@ def build_live_prediction():
         "class_probabilities": class_probabilities,
         "explanation": explain_features(feature_row),
         "weather": weather_payload(reading),
+        "source": source,
     }
 
 
@@ -357,10 +397,10 @@ def current():
 
     return {
         "date": prediction["date"],
-        "name": "NOAA SWPC Live Feeds",
+        "name": "NOAA SWPC Live Feeds" if prediction["source"] == "trained_model" else "Bundled Cached Space Weather",
         "status": status_for_risk_level(risk_level),
         "tomorrowPrediction": f"{risk_level} ({confidence}% Confidence)",
-        "noaaStatus": "ONLINE",
+        "noaaStatus": "ONLINE" if prediction["source"] == "trained_model" else "CACHED",
         "databaseStatus": "CONNECTED",
         "currentStatusText": f"{risk_level.title()} Risk Conditions",
         "prediction": {

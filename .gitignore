@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules
+Backend/.venv/
 /.pnp
 .pnp.*
 .yarn/*
