@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useSpaceWeather } from '../../../context/SpaceWeatherContext';
-import { getPrediction, PredictionParams, PredictionResult } from '../../../lib/weather-api';
+import { getAiSuggestions, getPrediction, PredictionParams, PredictionResult } from '../../../lib/weather-api';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Sun, Wind, Activity, Orbit, BrainCircuit, Gauge, Loader2, Send, ShieldAlert } from 'lucide-react';
 import { Button } from '../../ui/button';
@@ -35,6 +35,8 @@ export const WeatherLiveView = () => {
   const [manualPrediction, setManualPrediction] = React.useState<PredictionResult | null>(null);
   const [manualLoading, setManualLoading] = React.useState(false);
   const [manualError, setManualError] = React.useState('');
+  const [manualSuggestions, setManualSuggestions] = React.useState<string[]>([]);
+  const [manualSuggestionsError, setManualSuggestionsError] = React.useState('');
   const [validationErrors, setValidationErrors] = React.useState<Partial<Record<keyof PredictionParams, string>>>({});
 
   // Helper to get status color classes
@@ -82,30 +84,6 @@ export const WeatherLiveView = () => {
       default:
         return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10';
     }
-  };
-
-  const aiSuggestionsForRisk = (prediction: PredictionResult, weather: Required<PredictionParams>) => {
-    const score = Number(prediction.risk_score) || 0;
-    const speed = Number(weather.speed) || 0;
-    const kp = Number(weather.kp_index) || 0;
-    const proton = Number(weather.proton_flux) || 0;
-    const xray = Number(weather.xray_flux) || 0;
-    const suggestions: string[] = [];
-
-    if (score >= 85) suggestions.push('Enter storm-response posture and defer non-essential maneuvers until the forecast improves.');
-    else if (score >= 65) suggestions.push('Prepare contingency procedures and shorten the review window for upcoming spacecraft operations.');
-    else if (score >= 35) suggestions.push('Use enhanced monitoring for the next operations window and review any time-sensitive activity.');
-    else suggestions.push('Continue nominal operations while keeping the normal space-weather alert chain active.');
-
-    if (kp >= 7) suggestions.push(`Geomagnetic activity is severe (Kp ${kp.toFixed(1)}); protect navigation, communications, and attitude-sensitive operations.`);
-    else if (kp >= 5) suggestions.push(`Kp ${kp.toFixed(1)} indicates disturbed geomagnetic conditions; increase telemetry review around orbital operations.`);
-    else suggestions.push(`Kp ${kp.toFixed(1)} is currently below storm levels; keep routine geomagnetic monitoring enabled.`);
-
-    if (proton >= 10 || xray >= 1e-5) suggestions.push('Elevated particle or X-ray flux warrants radiation-sensitive payload checks and a command-uplink readiness review.');
-    else if (speed >= 650) suggestions.push(`Solar-wind speed is elevated at ${speed.toFixed(0)} km/s; check drag and communications margins for low-orbit assets.`);
-    else suggestions.push('Particle flux and solar-wind inputs are not at the strongest thresholds; preserve routine payload and telemetry checks.');
-
-    return suggestions;
   };
 
   const inputRanges: Partial<Record<keyof PredictionParams, { min: number; max: number; hint: string }>> = {
@@ -203,10 +181,18 @@ export const WeatherLiveView = () => {
     }
 
     setManualLoading(true);
+    setManualSuggestions([]);
+    setManualSuggestionsError('');
 
     try {
       const response = await getPrediction(manualWeather);
       setManualPrediction(response.data);
+      try {
+        const suggestionsResponse = await getAiSuggestions(manualWeather, response.data, 'manual');
+        setManualSuggestions(suggestionsResponse.data.suggestions);
+      } catch {
+        setManualSuggestionsError('Suggestions are temporarily unavailable.');
+      }
     } catch (error) {
       console.error('Manual weather prediction failed:', error);
       setManualError('Unable to generate a manual prediction right now. Check that the backend is running.');
@@ -540,7 +526,7 @@ export const WeatherLiveView = () => {
                       <span className="text-3xl font-extrabold text-white font-mono">
                         {Math.round(manualPrediction.risk_score)}%
                       </span>
-                      <span className="text-xs text-slate-400">confidence</span>
+                      <span className="text-xs text-slate-400">confidence estimate</span>
                     </div>
                   </div>
                   <ShieldAlert className={`h-7 w-7 ${riskTone(manualPrediction.risk_level).split(' ')[0]}`} />
@@ -552,7 +538,8 @@ export const WeatherLiveView = () => {
 
                 {manualPrediction.class_probabilities && (
                   <div className="space-y-2 border-t border-slate-800 pt-3">
-                    <h3 className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Class Probabilities</h3>
+                    <h3 className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Raw Class Scores</h3>
+                    <p className="text-[10px] text-slate-600">Model scores only — not certainty estimates.</p>
                     {Object.entries(manualPrediction.class_probabilities).map(([label, probability]) => (
                       <div key={label} className="space-y-1">
                         <div className="flex items-center justify-between text-[11px] font-mono">
@@ -574,13 +561,15 @@ export const WeatherLiveView = () => {
                 )}
 
                 <div className="space-y-2 border-t border-slate-800 pt-3">
-                  <h3 className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">AI Suggestions</h3>
-                  {aiSuggestionsForRisk(manualPrediction, manualWeather).map((suggestion) => (
+                  <h3 className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Suggestions</h3>
+                  {manualSuggestions.map((suggestion) => (
                     <div key={suggestion} className="flex gap-2 text-xs text-slate-300 leading-relaxed">
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400"></span>
                       <span>{suggestion}</span>
                     </div>
                   ))}
+                  {manualSuggestionsError && <p className="text-xs text-amber-300">{manualSuggestionsError}</p>}
+                  {!manualSuggestionsError && manualSuggestions.length === 0 && <p className="text-xs text-slate-500">Generating suggestions from the submitted conditions…</p>}
                 </div>
               </div>
             ) : (

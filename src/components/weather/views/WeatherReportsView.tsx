@@ -268,7 +268,7 @@ export const WeatherReportsView = () => {
             <div className="space-y-2 pb-2">
               <h4 className="font-bold text-slate-400 border-b border-slate-800/40 pb-1 uppercase print:text-slate-800">3. AI Threat Projection Details</h4>
               <p className="text-[11px] text-slate-300 leading-relaxed print:text-slate-800">
-                Model calculations predict <strong className="text-rose-400 font-extrabold print:text-rose-700">{profile.prediction.riskLevel} RISK</strong> conditions for Earth's orbital satellite array. Predictive model reports confidence scores of <strong className="text-blue-400 print:text-blue-700">{profile.prediction.confidence}%</strong>.
+                Model calculations predict <strong className="text-rose-400 font-extrabold print:text-rose-700">{profile.prediction.riskLevel} RISK</strong> conditions for Earth's orbital satellite array. Predictive model reports a conservative confidence estimate of <strong className="text-blue-400 print:text-blue-700">{profile.prediction.confidence}%</strong>.
               </p>
               <div className="bg-slate-900/60 p-4 border border-slate-800 rounded-lg print:border-black print:bg-white print:text-black mt-2">
                 <p className="text-slate-400 font-bold text-[10px] mb-1 print:text-slate-800">MODEL REASONING:</p>

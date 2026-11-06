@@ -83,7 +83,7 @@ export const TrendChart = ({ data }: TrendChartProps) => {
         <div className="flex gap-4 font-mono text-[10px] font-bold text-slate-400">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded bg-blue-500"></span>
-            <span>MODEL PROJECTION (30D)</span>
+            <span>RECENT STORED PREDICTIONS</span>
           </div>
         </div>
       </div>

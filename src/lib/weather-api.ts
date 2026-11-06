@@ -53,6 +53,12 @@ export interface PredictionResult {
   model_version?: string;
 }
 
+export interface AiSuggestionsResponse {
+  suggestions: string[];
+  source: 'GEMINI';
+  generatedAt: string;
+}
+
 export interface SpaceWeatherCurrentResponse {
   date: string;
   name: string;
@@ -162,6 +168,14 @@ export const getPrediction = async (params?: PredictionParams) => {
   }
 };
 
+export const getAiSuggestions = async (
+  weather: Record<string, number | string | undefined>,
+  prediction: Pick<PredictionResult, 'risk_level' | 'risk_score' | 'explanation'>,
+  mode: 'live' | 'manual',
+) => {
+  return axios.post<AiSuggestionsResponse>('/api/weather/suggestions', { weather, prediction, mode });
+};
+
 export const getCurrentSpaceWeather = async () => {
   return await axios.get<SpaceWeatherCurrentResponse>(`${API_BASE_URL}/current`);
 };
@@ -181,6 +195,7 @@ export const getAlerts = async () => {
 
 const weatherApi = {
   getPrediction,
+  getAiSuggestions,
   getCurrentSpaceWeather,
   getLiveWeather,
   getHistory,

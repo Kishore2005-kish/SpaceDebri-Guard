@@ -10,6 +10,7 @@ interface HistoryTableProps {
 
 export const HistoryTable = ({ data = [], limit = 5, showViewMoreLink = false }: HistoryTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const newestFirst = [...data].reverse();
 
   const getRiskColor = (label: string) => {
     switch (label?.toUpperCase()) {
@@ -25,12 +26,12 @@ export const HistoryTable = ({ data = [], limit = 5, showViewMoreLink = false }:
   };
 
   const itemsPerPage = limit;
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const totalPages = Math.ceil(newestFirst.length / itemsPerPage);
   
   // Get current items
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = data.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = newestFirst.slice(indexOfFirstItem, indexOfLastItem);
 
   const paginate = (pageNumber: number) => {
     if (pageNumber > 0 && pageNumber <= totalPages) {

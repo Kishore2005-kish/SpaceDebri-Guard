@@ -72,7 +72,7 @@ export const PredictionCard = ({ riskLevel, confidence, reason, recommendation }
         {/* Left Column - Confidence Radial Dial */}
         <div className="relative shrink-0 flex flex-col items-center justify-center bg-[#0F172A]/60 border border-slate-800/80 p-6 rounded-2xl">
           <span className="text-[10px] text-slate-500 font-mono tracking-wider mb-4 uppercase">
-            Prediction Confidence
+            Model Confidence Estimate
           </span>
           <div className="relative w-36 h-36 flex items-center justify-center">
             {/* SVG circle track */}
@@ -105,10 +105,10 @@ export const PredictionCard = ({ riskLevel, confidence, reason, recommendation }
               <span className="text-3xl font-extrabold font-mono text-white tracking-tight">
                 {confidence}%
               </span>
-              <p className="text-[9px] text-slate-400 font-semibold tracking-widest uppercase mt-0.5">Confidence</p>
+              <p className="text-[9px] text-slate-400 font-semibold tracking-widest uppercase mt-0.5">Estimate</p>
             </div>
           </div>
-          <span className="text-[9px] text-slate-500 font-mono mt-4">AI MODEL: SG-FORECAST-v4</span>
+          <span className="text-[9px] text-slate-500 font-mono mt-4">CAPPED BELOW CERTAINTY</span>
         </div>
 
         {/* Right Column - Prediction Details */}

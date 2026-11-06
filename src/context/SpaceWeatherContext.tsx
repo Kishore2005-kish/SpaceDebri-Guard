@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getCurrentSpaceWeather, getHistory, SpaceWeatherCurrentResponse, SpaceWeatherHistoryItem } from '../lib/weather-api';
+import { getAiSuggestions, getCurrentSpaceWeather, getHistory, SpaceWeatherCurrentResponse, SpaceWeatherHistoryItem } from '../lib/weather-api';
 
 interface SpaceWeatherContextType {
   profile: any;
@@ -43,20 +43,7 @@ const DEFAULT_PROFILE = {
   alerts: []
 };
 
-const recommendationForRisk = (riskLevel: string) => {
-  switch (riskLevel?.toUpperCase()) {
-    case 'CRITICAL':
-      return 'Suspend non-essential satellite maneuvers and protect sensitive payloads until the storm risk drops.';
-    case 'HIGH':
-      return 'Increase satellite telemetry checks and prepare radiation mitigation procedures for exposed systems.';
-    case 'MEDIUM':
-      return 'Continue enhanced monitoring of solar wind, proton flux, and communications-sensitive operations.';
-    default:
-      return 'No operational actions required. Maintain routine monitoring of telemetry and geomagnetic indices.';
-  }
-};
-
-const toProfile = (data: SpaceWeatherCurrentResponse) => {
+const toProfile = (data: SpaceWeatherCurrentResponse, recommendation?: string) => {
   const riskLevel = data.prediction.risk_level?.toUpperCase() || 'LOW';
 
   return {
@@ -72,7 +59,7 @@ const toProfile = (data: SpaceWeatherCurrentResponse) => {
       riskLevel,
       confidence: data.prediction.risk_score ?? 0,
       reason: data.prediction.explanation || DEFAULT_PROFILE.prediction.reason,
-      recommendation: recommendationForRisk(riskLevel)
+      recommendation: recommendation || 'Live Gemini operational guidance is unavailable.'
     },
     weather: {
       ...DEFAULT_PROFILE.weather,
@@ -101,7 +88,23 @@ export const SpaceWeatherProvider = ({ children }: { children: React.ReactNode }
 
         if (!isMounted) return;
 
-        setProfile(toProfile(currentResponse.data));
+        const liveWeather = currentResponse.data.weather;
+        const suggestionsResponse = await getAiSuggestions(
+          {
+            density: liveWeather.density,
+            speed: liveWeather.windSpeed,
+            temperature: liveWeather.temperature,
+            xray_flux: liveWeather.xrayFlux.raw,
+            proton_flux: liveWeather.protonFlux.raw,
+            kp_index: liveWeather.kpIndex.raw,
+            bz: liveWeather.solarWindBz.raw,
+          },
+          currentResponse.data.prediction,
+          'live',
+        ).catch(() => null);
+
+        if (!isMounted) return;
+        setProfile(toProfile(currentResponse.data, suggestionsResponse?.data.suggestions.join(' ')));
         setHistory(historyResponse.data);
       } catch (err) {
         console.error('Error fetching model-backed space weather data:', err);
@@ -126,9 +129,13 @@ export const SpaceWeatherProvider = ({ children }: { children: React.ReactNode }
     };
 
     fetchModelData();
+    // Keep the local prediction archive receiving fresh NOAA snapshots while
+    // the dashboard is open. The backend degrades to cached data if NOAA is down.
+    const refreshTimer = window.setInterval(fetchModelData, 15 * 60 * 1000);
 
     return () => {
       isMounted = false;
+      window.clearInterval(refreshTimer);
     };
   }, []);
 

@@ -45,6 +45,7 @@ local-*
 .claude
 .z-ai-config
 *.log
+Backend/data/prediction_history.sqlite3*
 dev.log
 dev.out.log
 test

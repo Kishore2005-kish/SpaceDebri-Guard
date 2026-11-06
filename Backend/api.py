@@ -1,7 +1,9 @@
 from pathlib import Path
 import json
+import sqlite3
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +30,7 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "model.pkl"
+PREDICTION_HISTORY_PATH = BASE_DIR / "data" / "prediction_history.sqlite3"
 NOAA_ENDPOINTS = {
     "xrays": "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
     "protons": "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-1-day.json",
@@ -66,6 +69,83 @@ def load_model_artifact(model_path=MODEL_PATH):
 MODEL_ARTIFACT = load_model_artifact()
 MODEL = MODEL_ARTIFACT["model"]
 TRAINING_HISTORY = preprocess_space_weather_frame(load_training_data(TRAINING_DATA_PATH))
+
+
+def prediction_history_connection():
+    """Open the small local archive used by the dashboard trend and audit log."""
+    PREDICTION_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(PREDICTION_HISTORY_PATH)
+    connection.row_factory = sqlite3.Row
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS prediction_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recorded_at TEXT NOT NULL,
+            observation_at TEXT,
+            source TEXT NOT NULL,
+            risk INTEGER NOT NULL,
+            risk_label TEXT NOT NULL,
+            confidence REAL NOT NULL,
+            explanation TEXT
+        )
+        """
+    )
+    return connection
+
+
+def risk_index(risk_level, confidence):
+    """Convert a class prediction into a chartable 0–100 operational risk index."""
+    weights = {"LOW": 15, "MEDIUM": 50, "HIGH": 85, "CRITICAL": 100}
+    return round(weights.get(normalize_level(risk_level), 0) * (float(confidence) / 100))
+
+
+def store_prediction(prediction, source):
+    """Persist a prediction snapshot so history represents real runtime data, not training data."""
+    recorded_at = datetime.now(timezone.utc).isoformat()
+    confidence = float(prediction["confidence"])
+    level = normalize_level(prediction["risk_level"])
+    with prediction_history_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO prediction_history (
+                recorded_at, observation_at, source, risk, risk_label, confidence, explanation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                recorded_at,
+                prediction.get("date"),
+                source,
+                risk_index(level, confidence),
+                level,
+                round(confidence),
+                prediction.get("explanation", ""),
+            ),
+        )
+    return recorded_at
+
+
+def stored_prediction_history(limit=30):
+    with prediction_history_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT recorded_at, risk, risk_label, confidence
+            FROM prediction_history
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+    # The graph needs chronological data; the newest-first query keeps the audit log current.
+    return [
+        {
+            "date": row["recorded_at"],
+            "risk": row["risk"],
+            "riskLabel": row["risk_label"],
+            "confidence": row["confidence"],
+        }
+        for row in reversed(rows)
+    ]
 
 
 def fetch_json(url):
@@ -265,6 +345,28 @@ def predict_from_features(features):
     return normalize_level(predicted_level), confidence, class_probabilities
 
 
+def confidence_estimate(raw_confidence, class_probabilities, source):
+    """Return a conservative operational confidence estimate, never a certainty claim.
+
+    Random-forest class probabilities are model scores and can be exactly 1.0
+    for familiar training patterns. This display estimate caps that score and
+    applies a provenance penalty until a separately calibrated model artifact
+    is trained on an independent temporal validation set.
+    """
+    raw = max(0.0, min(100.0, float(raw_confidence)))
+    second_best = sorted((float(value) for value in class_probabilities.values()), reverse=True)
+    runner_up = second_best[1] if len(second_best) > 1 else 0.0
+
+    # Close class scores carry more uncertainty than a clear class separation.
+    separation_penalty = max(0.0, min(15.0, runner_up * 0.15))
+    source_caps = {
+        "trained_model": 95.0,
+        "manual": 85.0,
+        "cached": 70.0,
+    }
+    return round(max(5.0, min(raw - separation_penalty, source_caps.get(source, 80.0))))
+
+
 def override_manual_features(features, feature_row, data):
     enriched = features.copy()
     enriched_row = feature_row.copy()
@@ -309,59 +411,19 @@ def build_live_prediction():
         source = "cached"
     live_df = preprocess_space_weather_frame(live_reading_to_frame(reading))
     features, feature_row = build_inference_matrix(TRAINING_HISTORY, live_df)
-    risk_level, confidence, class_probabilities = predict_from_features(features)
+    risk_level, raw_confidence, class_probabilities = predict_from_features(features)
+    confidence = confidence_estimate(raw_confidence, class_probabilities, source)
 
     return {
         "date": reading["date"],
         "risk_level": risk_level,
         "confidence": confidence,
+        "raw_confidence": raw_confidence,
         "class_probabilities": class_probabilities,
         "explanation": explain_features(feature_row),
         "weather": weather_payload(reading),
         "source": source,
     }
-
-
-def row_to_history(row):
-    return {
-        "date": row["date"].strftime("%Y-%m-%d") if hasattr(row["date"], "strftime") else row["date"],
-        "risk": 0,
-        "riskLabel": normalize_level(row["risk_level"]),
-        "confidence": 0,
-    }
-
-
-def model_history():
-    processed = preprocess_space_weather_frame(load_training_data(TRAINING_DATA_PATH))
-    rows = processed.tail(30)
-    history = []
-
-    for _, row in rows.iterrows():
-        live_df = pd.DataFrame([row])
-        try:
-            features, _ = build_inference_matrix(processed.loc[: row.name - 1], live_df)
-            risk_level, confidence, _ = predict_from_features(features)
-            probabilities = MODEL.predict_proba(features)[0]
-            probability_map = {
-                normalize_level(class_name): float(probability)
-                for class_name, probability in zip(MODEL.classes_, probabilities)
-            }
-            severity = (
-                probability_map.get("HIGH", 0) * 100
-                + probability_map.get("MEDIUM", 0) * 50
-            )
-            history.append(
-                {
-                    "date": row["date"].strftime("%Y-%m-%d"),
-                    "risk": round(severity),
-                    "riskLabel": risk_level,
-                    "confidence": round(confidence),
-                }
-            )
-        except Exception:
-            history.append(row_to_history(row))
-
-    return history
 
 
 def alerts_for_prediction(date, risk_level, confidence, explanation):
@@ -392,6 +454,7 @@ def health():
 @app.get("/current")
 def current():
     prediction = build_live_prediction()
+    store_prediction(prediction, prediction["source"])
     risk_level = prediction["risk_level"]
     confidence = prediction["confidence"]
 
@@ -418,7 +481,7 @@ def current():
 
 @app.get("/history")
 def history():
-    return model_history()
+    return stored_prediction_history()
 
 
 @app.get("/alerts")
@@ -432,13 +495,25 @@ def predict(data: dict):
     live_df = preprocess_space_weather_frame(live_reading_to_frame(data))
     features, feature_row = build_inference_matrix(TRAINING_HISTORY, live_df)
     features, feature_row = override_manual_features(features, feature_row, data)
-    risk_level, confidence, class_probabilities = predict_from_features(features)
+    risk_level, raw_confidence, class_probabilities = predict_from_features(features)
+    confidence = confidence_estimate(raw_confidence, class_probabilities, "manual")
 
-    return {
+    prediction = {
         "risk_score": confidence,
+        "raw_confidence": raw_confidence,
         "risk_level": risk_level,
         "explanation": explain_features(feature_row),
         "class_probabilities": class_probabilities,
         "prediction_source": "trained_model",
         "model_version": str(MODEL_ARTIFACT.get("model_version", "production-artifact")),
     }
+    store_prediction(
+        {
+            "date": datetime.now(timezone.utc).isoformat(),
+            "risk_level": risk_level,
+            "confidence": confidence,
+            "explanation": prediction["explanation"],
+        },
+        "manual",
+    )
+    return prediction
